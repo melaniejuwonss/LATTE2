@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument('--dataset_path', type=str, default='data/redial', choices=['data/redial', 'data/inspired'])
 
     # rec
-    parser.add_argument('--n_review', type=int, default=10)
+    parser.add_argument('--n_review', type=int, default=720)
     parser.add_argument('--n_meta', type=int, default=5)
     # parser.add_argument('--meta', type=str, default='word',
     #                     choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
@@ -36,6 +36,7 @@ def parse_args():
     parser.add_argument('--lr_dc_step', type=int, default=5, help='warmup_step')
     parser.add_argument('--lr_dc', type=float, default=0.1, help='warmup_gamma')
     parser.add_argument('--pretrained', action='store_true')
+    parser.add_argument('--permutation', type=int, default=3)
 
     # conv
     parser.add_argument('--n_template_sample', type=int, default=2, help='sampling')
