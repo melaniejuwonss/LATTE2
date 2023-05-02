@@ -52,10 +52,18 @@ class ContentInformation(Dataset):
                 permute_phrases.append(" ".join(np.array(phrases)[sample_index, ]))
                 permute_phrase_meta.append(sum(np.array(phrase_meta)[sample_index,], []))
 
-            tokenized_phrases = self.tokenizer(permute_phrases, max_length=max_review_len,
-                                               padding='max_length',
-                                               truncation=True,
-                                               add_special_tokens=True)
+            if len(sample_index_list) == 0:
+                permute_phrases = ['']
+                permute_phrase_meta = [[]]
+
+            try:
+                tokenized_phrases = self.tokenizer(permute_phrases, max_length=max_review_len,
+                                                   padding='max_length',
+                                                   truncation=True,
+                                                   add_special_tokens=True)
+            except:
+                print(sample)
+
 
             for idx, meta in enumerate(permute_phrase_meta):
                 permute_phrase_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
