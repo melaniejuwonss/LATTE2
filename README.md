@@ -1,4 +1,4 @@
-# LATTE
+# LATTE2
 
 ## Recommendation Task
 ``` shell
