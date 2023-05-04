@@ -1,7 +1,7 @@
 import random
 from collections import defaultdict
 from copy import copy
-from itertools import permutations, chain
+
 from torch.utils.data import Dataset
 import torch
 import json
@@ -26,63 +26,50 @@ class ContentInformation(Dataset):
                  encoding='utf-8'))  # to convert review meta to entity id
         self.movie2name = json.load(open(os.path.join(data_path, 'movie2name.json'), 'r',
                                          encoding='utf-8'))  # to convert movie crs id toentity id
-        self.read_data(args.max_review_len)  # read review text and meta
-        self.key_list = list(self.data_samples.keys())  # movie id list
+        self.read_data(args.max_review_len) # read review text and meta
+        self.key_list = list(self.data_samples.keys()) # movie id list
 
     def read_data(self, max_review_len):
-        f = open(os.path.join(self.data_path, 'reviewPhrases_with_entity.json'), encoding='utf-8')
+        f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
         data = json.load(f)
 
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            phrase_list, phrase_mask_list, phrase_meta_list, permute_phrases, permute_phrase_meta = [], [], [], [], []
+            review_list, review_mask_list, reviews_meta_list = [], [], []
 
             crs_id = str(sample['crs_id'])
-            phrases = sample['phrases']
-            phrase_meta = sample['entity']
+            reviews = sample['reviews']
+            reviews_meta = sample['reviews_meta']
 
             if self.movie2name[crs_id][0] == -1:
                 continue
 
-            if len(phrases) == 0:
-                phrases = ['']
-                phrase_meta = [[]]
+            if len(reviews) == 0:
+                reviews = ['']
+                reviews_meta = [[]]
 
-            sample_index_list = list(permutations(range(len(phrases)), self.args.permutation))
-            for sample_index in sample_index_list:
-                permute_phrases.append(" ".join(np.array(phrases)[sample_index, ]))
-                permute_phrase_meta.append(sum(np.array(phrase_meta)[sample_index,], []))
+            tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len,
+                                               padding='max_length',
+                                               truncation=True,
+                                               add_special_tokens=True)
 
-            if len(sample_index_list) == 0:
-                permute_phrases = ['']
-                permute_phrase_meta = [[]]
+            for idx, meta in enumerate(reviews_meta):
+                reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
+                reviews_meta[idx] = reviews_meta[idx] + [0] * (self.args.n_meta - len(meta))
 
-            try:
-                tokenized_phrases = self.tokenizer(permute_phrases, max_length=max_review_len,
-                                                   padding='max_length',
-                                                   truncation=True,
-                                                   add_special_tokens=True)
-            except:
-                print(sample)
+            for i in range(min(len(reviews), self.args.n_review)):
+                review_list.append(tokenized_reviews.input_ids[i])
+                review_mask_list.append(tokenized_reviews.attention_mask[i])
+                reviews_meta_list.append(reviews_meta[i])
 
-
-            for idx, meta in enumerate(permute_phrase_meta):
-                permute_phrase_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
-                permute_phrase_meta[idx] = permute_phrase_meta[idx] + [0] * (self.args.n_meta - len(meta))
-
-            for i in range(len(permute_phrases)):
-                phrase_list.append(tokenized_phrases.input_ids[i])
-                phrase_mask_list.append(tokenized_phrases.attention_mask[i])
-                phrase_meta_list.append(permute_phrase_meta[i])
-
-            for i in range(self.args.n_review - len(permute_phrases)):
+            for i in range(self.args.n_review - len(reviews)):
                 zero_vector = [0] * max_review_len
-                phrase_list.append(zero_vector)
-                phrase_mask_list.append(zero_vector)
+                review_list.append(zero_vector)
+                review_mask_list.append(zero_vector)
 
             self.data_samples[self.movie2name[crs_id][0]] = {
-                "review": phrase_list,
-                "review_mask": phrase_mask_list,
-                "review_meta": phrase_meta_list
+                "review": review_list,
+                "review_mask": review_mask_list,
+                "review_meta": reviews_meta_list
             }
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
