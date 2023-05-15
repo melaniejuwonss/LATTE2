@@ -164,24 +164,24 @@ def main(args):
 
     # Load expert model
     model = MovieExpertCRS(args, bert_model, bert_config, kg_information.entity_kg, kg_information.n_entity,
-                           DATASET_PATH).to(args.device_id)
+                           DATASET_PATH, tokenizer).to(args.device_id)
 
     if 'rec' in args.task:
         # create result file
         results_file_path = createResultFile(args)
-        content_dataset = ContentInformation(args, DATASET_PATH, tokenizer, args.device_id)
-        crs_dataset = CRSDatasetRec(args, DATASET_PATH, content_dataset, tokenizer, kg_information)
+        # content_dataset = ContentInformation(args, DATASET_PATH, tokenizer, args.device_id)
+        crs_dataset = CRSDatasetRec(args, DATASET_PATH, tokenizer, kg_information)
         train_data = crs_dataset.train_data
         valid_data = crs_dataset.valid_data
         test_data = crs_dataset.test_data
 
-        pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
+        # pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
-        # For pre-training
-        if not args.pretrained:
-            pretrain(args, model, pretrain_dataloader, pretrained_path)
-        else:
-            model.load_state_dict(torch.load(best_rec_pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
+        # # For pre-training
+        # if not args.pretrained:
+        #     pretrain(args, model, pretrain_dataloader, pretrained_path)
+        # else:
+        #     model.load_state_dict(torch.load(best_rec_pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
         type = 'bert'
         if args.dataset_path == 'data/inspired':
@@ -201,13 +201,13 @@ def main(args):
         if args.mode == 'test':
             content_hit, initial_hit, best_result = train_recommender(args, model, train_rec_dataloader,
                                                                       test_rec_dataloader,
-                                                                      trained_path, results_file_path,
-                                                                      pretrain_dataloader)
+                                                                      trained_path, results_file_path
+                                                                      )
         elif args.mode == 'valid':
             content_hit, initial_hit, best_result = train_recommender(args, model, train_rec_dataloader,
                                                                       valid_rec_dataloader,
-                                                                      trained_path, results_file_path,
-                                                                      pretrain_dataloader)
+                                                                      trained_path, results_file_path
+                                                                      )
 
         return content_hit, initial_hit, best_result
 

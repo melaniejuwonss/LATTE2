@@ -13,6 +13,7 @@ from utils import edge_to_pyg_format
 from dataclasses import dataclass
 from typing import Tuple, Optional
 import os
+from tqdm import tqdm
 
 
 @dataclass
@@ -21,12 +22,76 @@ class MultiOutput(ModelOutput):
     logits: Optional[torch.FloatTensor] = None
 
 
+class get_itemrepresentations(nn.Module):
+    def __init__(self, read_data, args, tokenizer, device_id, kg_emb_dim, token_emb_dim):
+        super(get_itemrepresentations, self).__init__()
+
+        all_phrase_list, all_phrase_mask_list, all_title_list = [], [], []
+        for sample in tqdm(read_data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            phrase_list, phrase_mask_list = [], []
+
+            crs_id = str(sample['crs_id'])
+            title = sample['title']
+            year = sample['year']
+            if year == None:
+                movie = title
+            else:
+                movie = title + '(' + year + ')'
+            phrases = sample['phrases']
+            phrases.append(movie)  # ego edge
+
+            # if self.movie2name[crs_id][0] == -1:
+            #     continue
+
+            if len(phrases) == 0:
+                phrases = ['']
+
+            tokenized_title = tokenizer(movie, max_length=args.max_review_len,
+                                        padding='max_length',
+                                        truncation=True,
+                                        add_special_tokens=True)
+
+            tokenized_phrases = tokenizer(phrases, max_length=args.max_review_len,
+                                          padding='max_length',
+                                          truncation=True,
+                                          add_special_tokens=True)
+
+            for i in range(len(phrases)):
+                phrase_list.append(tokenized_phrases.input_ids[i])
+                phrase_mask_list.append(1)
+
+            for i in range(11 - len(phrases)):
+                phrase_mask_list.append(0)
+                phrase_list.extend(tokenizer([''], max_length=args.max_review_len,
+                                             padding='max_length',
+                                             truncation=True,
+                                             add_special_tokens=True).input_ids)
+
+            all_phrase_list.append(phrase_list)
+            all_title_list.append(tokenized_title.input_ids)
+            all_phrase_mask_list.append(phrase_mask_list)
+
+        self.all_phrase_list = torch.tensor(all_phrase_list).to(device_id).float()  # [MOVIE, LEN, DIM]
+        self.all_title_list = torch.tensor(all_title_list).to(device_id).float()  # [MOVIE, DIM]
+        self.all_phrase_mask_list = torch.tensor(all_phrase_mask_list).to(device_id).float()  # [MOVIE, LEN]
+        self.kg_emb_dim = kg_emb_dim
+        self.token_emb_dim = token_emb_dim
+        self.item_attention = AdditiveAttention(self.kg_emb_dim, self.token_emb_dim)
+
+    def forward(self):
+        item_representations = self.item_attention(self.all_phrase_list, self.all_title_list, self.all_phrase_mask_list)
+        return item_representations
+
+
 class MovieExpertCRS(nn.Module):
-    def __init__(self, args, bert_model, bert_config, entity_kg, n_entity, data_path):
+    def __init__(self, args, bert_model, bert_config, entity_kg, n_entity, data_path, tokenizer):
         super(MovieExpertCRS, self).__init__()
 
         # Setting
         self.args = args
+        self.tokenizer = tokenizer
+        self.movie2name = json.load(open(os.path.join(data_path, 'movie2name.json'), 'r',
+                                         encoding='utf-8'))
         self.device_id = args.device_id
         self.dropout_pt = nn.Dropout(args.dropout_pt)
         self.dropout_ft = nn.Dropout(args.dropout_ft)
@@ -52,6 +117,9 @@ class MovieExpertCRS(nn.Module):
         self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
         self.entity_proj = nn.Linear(self.kg_emb_dim, self.token_emb_dim)
         self.entity_attention = SelfDotAttention(self.kg_emb_dim, self.kg_emb_dim)
+        self.item_representations = get_itemrepresentations(
+            json.load(open(os.path.join(data_path, 'reviewPhrases_metaMatching.json'), 'r', encoding='utf-8')), args,
+            self.tokenizer, self.device_id, self.kg_emb_dim, self.token_emb_dim)
 
         # Gating
         self.gating = nn.Linear(2 * self.kg_emb_dim, self.kg_emb_dim)
@@ -117,53 +185,104 @@ class MovieExpertCRS(nn.Module):
             return scores, target_item
         return loss
 
+    def get_itemrepresentations(self, read_data, args):
+        item_representations = []
+        all_phrase_list, all_phrase_mask_list, all_title_list = [], [], []
+        for sample in tqdm(read_data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            phrase_list, phrase_mask_list = [], []
+
+            crs_id = str(sample['crs_id'])
+            title = sample['title']
+            year = sample['year']
+            if year == None:
+                movie = title
+            else:
+                movie = title + '(' + year + ')'
+            phrases = sample['phrases']
+            phrases.append(movie)  # ego edge
+
+            # if self.movie2name[crs_id][0] == -1:
+            #     continue
+
+            if len(phrases) == 0:
+                phrases = ['']
+
+            tokenized_title = self.tokenizer(movie, max_length=args.max_review_len,
+                                             padding='max_length',
+                                             truncation=True,
+                                             add_special_tokens=True)
+
+            tokenized_phrases = self.tokenizer(phrases, max_length=args.max_review_len,
+                                               padding='max_length',
+                                               truncation=True,
+                                               add_special_tokens=True)
+
+            for i in range(len(phrases)):
+                phrase_list.append(tokenized_phrases.input_ids[i])
+                phrase_mask_list.append(1)
+
+            for i in range(11 - len(phrases)):
+                phrase_mask_list.append(0)
+                phrase_list.extend(self.tokenizer([''], max_length=args.max_review_len,
+                                                  padding='max_length',
+                                                  truncation=True,
+                                                  add_special_tokens=True).input_ids)
+
+            all_phrase_list.append(phrase_list)
+            all_title_list.append(tokenized_title.input_ids)
+            all_phrase_mask_list.append(phrase_mask_list)
+
+        all_phrase_list = torch.tensor(all_phrase_list).to(self.device_id).float()  # [MOVIE, LEN, DIM]
+        all_title_list = torch.tensor(all_title_list).to(self.device_id).float()  # [MOVIE, DIM]
+        all_phrase_mask_list = torch.tensor(all_phrase_mask_list).to(self.device_id).float()  # [MOVIE, LEN]
+        item_representations = self.item_attention(all_phrase_list, all_title_list, all_phrase_mask_list)
+
+        return item_representations
+
     def get_representations(self, context_entities, context_tokens):
-        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
-        entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
+        # kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
+        # entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
 
-        entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
+        # entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
         token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
                                             attention_mask=token_padding_mask.to(
                                                 self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
-        return entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask
+        return token_embedding, token_padding_mask
 
-    def get_representationsWithUser(self, context_entities, context_tokens):
-        entity_representations, entity_padding_mask, kg_embedding, token_embedding_prev, token_padding_mask = self.get_representations(
-            context_entities,
-            context_tokens)
-
-        token_embedding = self.linear_transformation(token_embedding_prev)
-        token_attn_rep = token_embedding[:, 0, :]
-
-        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
-                                                position=self.args.position)  # (bs, entity_dim)
-
-        # dropout
-        token_attn_rep = self.dropout_ft(token_attn_rep)
-        entity_attn_rep = self.dropout_ft(entity_attn_rep)
-
-        gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
-        user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
-
-        return entity_representations, entity_padding_mask, kg_embedding, token_embedding_prev, token_padding_mask, user_embedding
+    # def get_representationsWithUser(self, context_entities, context_tokens):
+    #     token_embedding_prev, token_padding_mask = self.get_representations(
+    #         context_entities,
+    #         context_tokens)
+    #
+    #     token_embedding = self.linear_transformation(token_embedding_prev)
+    #     token_attn_rep = token_embedding[:, 0, :]
+    #
+    #     # entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
+    #     #                                         position=self.args.position)  # (bs, entity_dim)
+    #
+    #     # dropout
+    #     token_attn_rep = self.dropout_ft(token_attn_rep)
+    #     # entity_attn_rep = self.dropout_ft(entity_attn_rep)
+    #
+    #     gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
+    #     user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
+    #
+    #     return entity_representations, entity_padding_mask, kg_embedding, token_embedding_prev, token_padding_mask, user_embedding
 
     def forward(self, context_entities, context_tokens):
-        entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = self.get_representations(
-            context_entities,
-            context_tokens)
-
+        token_embedding, token_padding_mask = self.get_representations(context_entities, context_tokens)
         token_embedding = self.linear_transformation(token_embedding)
         token_attn_rep = token_embedding[:, 0, :]
-        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
-                                                position=self.args.position)  # (bs, entity_dim)
+        # entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
+        #                                         position=self.args.position)  # (bs, entity_dim)
 
         # dropout
         token_attn_rep = self.dropout_ft(token_attn_rep)
-        entity_attn_rep = self.dropout_ft(entity_attn_rep)
+        # entity_attn_rep = self.dropout_ft(entity_attn_rep)
 
-        gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
-        user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
+        # gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
+        user_embedding = token_attn_rep
 
-        scores = F.linear(user_embedding, kg_embedding)
+        scores = F.linear(user_embedding, self.item_representations())
         return scores

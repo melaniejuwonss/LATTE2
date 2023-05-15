@@ -90,9 +90,8 @@ class CRSDataLoader:
                 for idx, movie in enumerate(conv_dict['items']):
                     augment_conv_dict = deepcopy(conv_dict)
                     augment_conv_dict['item'] = movie
-                    augment_conv_dict['review_meta'] = conv_dict['review_meta'][idx]
-                    augment_conv_dict['review'] = conv_dict['review'][idx]
-                    augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
+                    # augment_conv_dict['review'] = conv_dict['review'][idx]
+                    # augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
                     augment_dataset.append(augment_conv_dict)
 
         logger.info('[Finish dataset process before rec batchify]')
@@ -120,22 +119,18 @@ class CRSDataLoader:
             batch_context_tokens.append(context_tokens)
             batch_item.append(conv_dict['item'])
             ### Sampling
-            review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=1))
+            # review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=1))
+            #
+            # if review_exist_num == 0:
+            #     review_exist_num = 1
+            #
+            # review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.n_sample)]
 
-            if review_exist_num == 0:
-                review_exist_num = 1
-
-            review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.n_sample)]
-
-            batch_review_meta.append([conv_dict['review_meta'][k] for k in review_sample_idx])
-            batch_review.append([conv_dict['review'][k] for k in review_sample_idx])
-            batch_review_mask.append([conv_dict['review_mask'][k] for k in review_sample_idx])
+            # batch_review.append([conv_dict['review'][k] for k in review_sample_idx])
+            # batch_review_mask.append([conv_dict['review_mask'][k] for k in review_sample_idx])
 
         return (padded_tensor(batch_context_entities, 0, pad_tail=False),
                 padded_tensor(batch_context_tokens, 0, pad_tail=False),
-                torch.tensor(batch_review_meta, dtype=torch.long),
-                torch.tensor(batch_review, dtype=torch.long),
-                torch.tensor(batch_review_mask, dtype=torch.long),
                 torch.tensor(batch_item, dtype=torch.long)
                 )
 

@@ -8,9 +8,9 @@ class AdditiveAttention(nn.Module):
     def __init__(self, feature_dim: int, attention_dim: int):
         super(AdditiveAttention, self).__init__()
         self.hidden_size = feature_dim
-        self.Wk = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True)
-        self.Wq = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True)
-        self.Wp = nn.Linear(in_features=attention_dim, out_features=1, bias=False)
+        self.Wk = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True).cuda()
+        self.Wq = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True).cuda()
+        self.Wp = nn.Linear(in_features=attention_dim, out_features=1, bias=False).cuda()
 
     def initialize(self):
         nn.init.xavier_uniform_(self.Wk.weight, gain=nn.init.calculate_gain('tanh'))
@@ -29,12 +29,12 @@ class AdditiveAttention(nn.Module):
         if query is None:
             attention = self.Wp(torch.tanh(self.Wk(feature)))
         else:
-            attention = self.Wp(torch.tanh(self.Wk(feature) + self.Wq(query.unsqueeze(1))))
+            attention = self.Wp(torch.tanh(self.Wk(feature) + self.Wq(query).unsqueeze(1))) #[MOVIE, LEN, 1]
             # attention = torch.matmul(self.Wk(feature), self.Wq(query).unsqueeze(-1)) / math.sqrt(self.hidden_size)
             # attention = torch.matmul(torch.tanh(self.Wk(feature)), (self.Wp.weight + self.Wq(query)).unsqueeze(-1))
-            # a = attention.squeeze(dim=2)
+            attention = attention.squeeze(dim=2)
 
-        a = attention.squeeze(dim=2)
+        a = attention
 
         if mask is not None:
             alpha = F.softmax(a.masked_fill(mask == 0, -1e9), dim=1).unsqueeze(dim=1)  # [batch_size, 1, length]
