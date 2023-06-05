@@ -26,39 +26,54 @@ class ContentInformation(Dataset):
                  encoding='utf-8'))  # to convert review meta to entity id
         self.movie2name = json.load(open(os.path.join(data_path, 'movie2name.json'), 'r',
                                          encoding='utf-8'))  # to convert movie crs id toentity id
-        self.read_data(args.max_review_len) # read review text and meta
-        self.key_list = list(self.data_samples.keys()) # movie id list
+        self.read_data(args.max_review_len)  # read review text and meta
+        self.key_list = list(self.data_samples.keys())  # movie id list
 
     def read_data(self, max_review_len):
-        f = open(os.path.join(self.data_path, 'reviewPhrases_metaMatching.json'), encoding='utf-8')
+        f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
         data = json.load(f)
 
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             phrase_list, phrase_mask_list = [], []
+            phrase_num = 0
 
             crs_id = str(sample['crs_id'])
-            phrases = sample['phrases']
+            phrases = sample['reviews']
 
-            if self.movie2name[crs_id][0] == -1:
-                continue
+            # if self.movie2name[crs_id][0] == -1:
+            #     continue
 
-            if len(phrases) == 0:
-                phrases = ['']
+            title = self.movie2name[crs_id][1]
+            phrase_num = min(len(phrases), self.args.n_review)
+            #     phrases = ['']
 
-            tokenized_phrases = self.tokenizer(phrases, max_length=max_review_len,
-                                               padding='max_length',
-                                               truncation=True,
-                                               add_special_tokens=True)
+            tokenized_title = self.tokenizer(title, max_length=max_review_len,
+                                             padding='max_length',
+                                             truncation=True,
+                                             add_special_tokens=True)
+            if len(phrases) != 0:
+                tokenized_phrases = self.tokenizer(phrases, max_length=max_review_len,
+                                                   padding='max_length',
+                                                   truncation=True,
+                                                   add_special_tokens=True)
 
-
-            for i in range(len(phrases)):
+            for i in range(min(len(phrases), self.args.n_review)):
                 phrase_list.append(tokenized_phrases.input_ids[i])
                 phrase_mask_list.append(tokenized_phrases.attention_mask[i])
 
+            for i in range(self.args.n_review - len(phrases)):
+                zero_vector = [0] * max_review_len
+                phrase_list.append(zero_vector)
+                phrase_mask_list.append(zero_vector)
 
-            self.data_samples[self.movie2name[crs_id][0]] = {
+            if crs_id in self.data_samples.keys():
+                print()
+            self.data_samples[crs_id] = {
+                "title": tokenized_title.input_ids,
+                "title_mask": tokenized_title.attention_mask,
                 "review": phrase_list,
-                "review_mask": phrase_mask_list
+                "review_mask": phrase_mask_list,
+                "num_reviews": phrase_num
             }
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
@@ -146,7 +161,6 @@ class CRSDatasetRec:
                     utt['text'][idx] = '%s' % (self.movie2name[word[1:]][1])
                     if word[1:] in self.crsid2id.keys():
                         movie_ids.append(self.crsid2id[word[1:]])
-
 
             text = ' '.join(utt['text'])
             # movie_ids = [self.entity2id[movie] for movie in utt['movies'] if

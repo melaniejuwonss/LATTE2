@@ -29,15 +29,15 @@ class AdditiveAttention(nn.Module):
         if query is None:
             attention = self.Wp(torch.tanh(self.Wk(feature)))
         else:
-            attention = self.Wp(torch.tanh(self.Wk(feature) + self.Wq(query).unsqueeze(1))) #[MOVIE, LEN, 1]
+            attention = self.Wp(torch.tanh(self.Wk(feature) + self.Wq(query).unsqueeze(1))) #[batch, R, 1]
             # attention = torch.matmul(self.Wk(feature), self.Wq(query).unsqueeze(-1)) / math.sqrt(self.hidden_size)
             # attention = torch.matmul(torch.tanh(self.Wk(feature)), (self.Wp.weight + self.Wq(query)).unsqueeze(-1))
-            attention = attention.squeeze(dim=2)
+            attention = attention.squeeze(dim=2) # [batch, R]
 
         a = attention
 
         if mask is not None:
-            alpha = F.softmax(a.masked_fill(mask == 0, -1e9), dim=1).unsqueeze(dim=1)  # [batch_size, 1, length]
+            alpha = F.softmax(a.masked_fill(mask == 0, -1e9), dim=1).unsqueeze(dim=1)  # [batch_size, 1, R]
         else:
             alpha = F.softmax(a, dim=1).unsqueeze(dim=1)  # [batch_size, 1, length]
         out = torch.bmm(alpha, feature).squeeze(dim=1)  # [batch_size, feature_dim]

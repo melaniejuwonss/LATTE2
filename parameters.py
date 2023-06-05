@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument('--dataset_path', type=str, default='data/redial', choices=['data/redial', 'data/inspired'])
 
     # rec
-    parser.add_argument('--n_review', type=int, default=720)
+    parser.add_argument('--n_review', type=int, default=9)
     parser.add_argument('--n_meta', type=int, default=5)
     # parser.add_argument('--meta', type=str, default='word',
     #                     choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
