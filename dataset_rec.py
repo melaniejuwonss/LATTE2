@@ -30,20 +30,24 @@ class ContentInformation(Dataset):
         self.key_list = list(self.data_samples.keys())  # movie id list
 
     def read_data(self, max_review_len):
-        f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
-        data = json.load(f)
+        data = json.load(open(os.path.join(self.data_path, 'content_data.json'), encoding='utf-8'))[0]
+        review_phrase = json.load(open(os.path.join(self.data_path, 'reviewPhrase.json'), encoding='utf-8'))
 
-        for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        for sample in tqdm(zip(data, review_phrase), bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             phrase_list, phrase_mask_list = [], []
-            phrase_num = 0
 
-            crs_id = str(sample['crs_id'])
-            phrases = sample['reviews']
+            crs_id = str(sample[1]['crs_id'])
+            phrases = sample[1]['phrases'][:self.args.n_review]
+            genre = " ".join(sample[0]['meta']['genre'])
+            director = " ".join(sample[0]['meta']['director'])
+            writers = " ".join(sample[0]['meta']['writers'])
+            stars = " ".join(sample[0]['meta']['stars'])
 
             # if self.movie2name[crs_id][0] == -1:
             #     continue
 
             title = self.movie2name[crs_id][1]
+            seed_keywords = genre + director + writers + stars
             phrase_num = min(len(phrases), self.args.n_review)
             #     phrases = ['']
 
@@ -51,6 +55,11 @@ class ContentInformation(Dataset):
                                              padding='max_length',
                                              truncation=True,
                                              add_special_tokens=True)
+
+            tokenized_seed = self.tokenizer(seed_keywords, max_length=max_review_len,
+                                            padding='max_length',
+                                            truncation=True,
+                                            add_special_tokens=True)
             if len(phrases) != 0:
                 tokenized_phrases = self.tokenizer(phrases, max_length=max_review_len,
                                                    padding='max_length',
@@ -73,6 +82,8 @@ class ContentInformation(Dataset):
                 "title_mask": tokenized_title.attention_mask,
                 "review": phrase_list,
                 "review_mask": phrase_mask_list,
+                "seed_keywords": tokenized_seed.input_ids,
+                "seed_keywords_mask": tokenized_seed.attention_mask,
                 "num_reviews": phrase_num
             }
 

@@ -1,3 +1,4 @@
+import numpy as np
 import torch.nn.functional as F
 from torch import nn
 import torch
@@ -38,6 +39,12 @@ class get_itemrepresentations(nn.Module):
         self.title_mask = torch.tensor(
             [self.content_dataset[crs_id]['title_mask'] for crs_id in list((self.content_dataset.keys()))]).to(
             self.args.device_id)
+        self.seed_keywords = torch.tensor(
+            [self.content_dataset[crs_id]['seed_keywords'] for crs_id in list((self.content_dataset.keys()))]).to(
+            self.args.device_id)
+        self.seed_keywords_mask = torch.tensor(
+            [self.content_dataset[crs_id]['seed_keywords_mask'] for crs_id in list((self.content_dataset.keys()))]).to(
+            self.args.device_id)
         self.num_reviews = [self.content_dataset[crs_id]['num_reviews'] for crs_id in
                             list((self.content_dataset.keys()))]
         self.num_review_mask = torch.tensor(
@@ -51,10 +58,13 @@ class get_itemrepresentations(nn.Module):
         self.review = self.review.view(-1, self.kg_emb_dim)  # [M X R, L]
         self.review_mask = self.review_mask.view(-1, self.kg_emb_dim)  # [M X R, L]
         review_emb = self.word_encoder(input_ids=self.review, attention_mask=self.review_mask).last_hidden_state[:, 0,
-                     :].view(-1, self.args.n_review, self.token_emb_dim) # [M X R, L, d]  --> [M, R, d]
+                     :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
+        seed_emb = self.word_encoder(input_ids=self.seed_keywords,
+                                     attention_mask=self.seed_keywords_mask).last_hidden_state[:, 0, :]  # [M, d]
         title_emb = self.word_encoder(input_ids=self.title,
                                       attention_mask=self.title_mask).last_hidden_state[:, 0, :]  # [M, d]
-        item_representations = self.item_attention(review_emb, title_emb, self.num_review_mask)
+        query_embedding = torch.add(title_emb, seed_emb) / 2
+        item_representations = self.item_attention(review_emb, query_embedding, self.num_review_mask)
         return item_representations
 
 
