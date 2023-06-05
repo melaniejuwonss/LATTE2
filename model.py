@@ -55,7 +55,7 @@ class get_itemrepresentations(nn.Module):
         self.word_encoder = bert_model
 
     def forward(self):
-        print("SHAPE:",self.review.shape)
+        # print("SHAPE:",self.review.shape)
         review = self.review.view(-1, self.args.max_review_len)  # [M X R, L]
         review_mask = self.review_mask.view(-1, self.args.max_review_len)  # [M X R, L]
         review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
