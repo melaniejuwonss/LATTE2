@@ -64,8 +64,9 @@ class get_itemrepresentations(nn.Module):
                                      attention_mask=self.seed_keywords_mask).last_hidden_state[:, 0, :]  # [M, d]
         title_emb = self.word_encoder(input_ids=self.title,
                                       attention_mask=self.title_mask).last_hidden_state[:, 0, :]  # [M, d]
-        query_embedding = torch.add(title_emb, seed_emb) / 2
-        item_representations = self.item_attention(review_emb, query_embedding, self.num_review_mask)
+        # query_embedding = torch.add(title_emb, seed_emb) / 2
+        # item_representations = self.item_attention(review_emb, query_embedding, self.num_review_mask)
+        item_representations = torch.sum(torch.stack([title_emb, seed_emb, torch.sum(review_emb, dim=1)]), dim=0) / (review_emb.shape[1] + 2)
         return item_representations
 
 
