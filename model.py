@@ -55,9 +55,9 @@ class get_itemrepresentations(nn.Module):
         self.word_encoder = bert_model
 
     def forward(self):
-        self.review = self.review.view(-1, self.kg_emb_dim)  # [M X R, L]
-        self.review_mask = self.review_mask.view(-1, self.kg_emb_dim)  # [M X R, L]
-        review_emb = self.word_encoder(input_ids=self.review, attention_mask=self.review_mask).last_hidden_state[:, 0,
+        review = self.review.view(-1, self.kg_emb_dim)  # [M X R, L]
+        review_mask = self.review_mask.view(-1, self.kg_emb_dim)  # [M X R, L]
+        review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                      :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
         seed_emb = self.word_encoder(input_ids=self.seed_keywords,
                                      attention_mask=self.seed_keywords_mask).last_hidden_state[:, 0, :]  # [M, d]
