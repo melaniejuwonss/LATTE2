@@ -51,15 +51,10 @@ class ContentInformation(Dataset):
             phrase_num = min(len(phrases), self.args.n_review)
             #     phrases = ['']
 
-            tokenized_title = self.tokenizer(title, max_length=max_review_len,
+            tokenized_title = self.tokenizer(title + seed_keywords, max_length=max_review_len,
                                              padding='max_length',
                                              truncation=True,
                                              add_special_tokens=True)
-
-            tokenized_seed = self.tokenizer(seed_keywords, max_length=max_review_len,
-                                            padding='max_length',
-                                            truncation=True,
-                                            add_special_tokens=True)
             if len(phrases) != 0:
                 tokenized_phrases = self.tokenizer(phrases, max_length=max_review_len,
                                                    padding='max_length',
@@ -82,8 +77,6 @@ class ContentInformation(Dataset):
                 "title_mask": tokenized_title.attention_mask,
                 "review": phrase_list,
                 "review_mask": phrase_mask_list,
-                "seed_keywords": tokenized_seed.input_ids,
-                "seed_keywords_mask": tokenized_seed.attention_mask,
                 "num_reviews": phrase_num
             }
 
@@ -95,8 +88,6 @@ class ContentInformation(Dataset):
         title_mask = self.data_samples[idx]['title_mask']
         review_token = self.data_samples[idx]['review']
         review_mask = self.data_samples[idx]['review_mask']
-        seed_keywords = self.data_samples[idx]['seed_keywords']
-        seed_keywords_mask = self.data_samples[idx]['seed_keywords_mask']
         num_reviews = self.data_samples[idx]['num_reviews']
 
         # review_exist_num = np.count_nonzero(np.sum(np.array(review_mask), axis=1))
@@ -114,11 +105,9 @@ class ContentInformation(Dataset):
         title_mask = torch.LongTensor(title_mask).to(self.args.device_id)  # [L, ]
         review_token = torch.LongTensor(review_token).to(self.args.device_id)  # [R, L]
         review_mask = torch.LongTensor(review_mask).to(self.args.device_id)  # [R, L]
-        seed_keywords = torch.LongTensor(seed_keywords).to(self.args.device_id)  # [L, ]
-        seed_keywords_mask = torch.LongTensor(seed_keywords_mask).to(self.args.device_id)  # [L, ]
         num_review_mask = torch.tensor([1] * num_reviews + [0] * (self.args.n_review - num_reviews)).to(self.args.device_id)
 
-        return idx, title, title_mask, review_token, review_mask, seed_keywords, seed_keywords_mask, num_review_mask
+        return idx, title, title_mask, review_token, review_mask, num_review_mask
 
     def __len__(self):
         return len(self.data_samples)

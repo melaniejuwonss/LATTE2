@@ -51,13 +51,13 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
 def finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path, initial_hit,
                         best_hit, eval_metric, device_id):
     hit_ft = [[], [], [], [], []]
-    item_rep = []
+    item_rep, movie_ids = [], []
     # Fine-tuning Test
-    for movie_id, title, title_mask, review, review_mask, seed_keywords, seed_keywords_mask, num_reviews in tqdm(
-            item_dataloader,
-            bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, seed_keywords,
-                                               seed_keywords_mask, num_reviews))
+    for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
+                                                                              bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews))
+        movie_ids.extend(movie_id.tolist())
+    logger.info(movie_ids)
     for batch in test_dataloader.get_rec_data(shuffle=False):
         context_entities, context_tokens, target_items = batch
         scores = model.forward(context_entities, context_tokens, torch.tensor(item_rep).to(device_id))
@@ -109,7 +109,6 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
     for epoch in range(args.epoch_ft):
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
 
-
         item_rep, movie_ids = [], []
         # TRAIN
         model.train()
@@ -119,27 +118,25 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
         logger.info(f'[Recommendation epoch {str(epoch)}]')
         logger.info('[Train]')
 
-        for movie_id, title, title_mask, review, review_mask, seed_keywords, seed_keywords_mask, num_reviews in tqdm(
-                item_dataloader,
-                bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, seed_keywords,
-                                                   seed_keywords_mask, num_reviews))
-            movie_ids.append(movie_id)
+        for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
+                                                                                  bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews))
+            movie_ids.extend(movie_id.tolist())
+        logger.info(movie_ids)
 
-
-        for batch in train_dataloader.get_rec_data(args.batch_size):
-            context_entities, context_tokens, target_items = batch
-            scores_ft = model.forward(context_entities, context_tokens, torch.tensor(item_rep).to(args.device_id))
-            loss = model.criterion(scores_ft, target_items.to(args.device_id))
-
-            # loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
-            # loss = loss_ft + ((loss_pt) * args.loss_lambda)
-
-            total_loss += loss.data.float()
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        scheduler.step()
+        # for batch in train_dataloader.get_rec_data(args.batch_size):
+        #     context_entities, context_tokens, target_items = batch
+        #     scores_ft = model.forward(context_entities, context_tokens, torch.tensor(item_rep).to(args.device_id))
+        #     loss = model.criterion(scores_ft, target_items.to(args.device_id))
+        #
+        #     # loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
+        #     # loss = loss_ft + ((loss_pt) * args.loss_lambda)
+        #
+        #     total_loss += loss.data.float()
+        #     optimizer.zero_grad()
+        #     loss.backward()
+        #     optimizer.step()
+        # scheduler.step()
         finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
                             initial_hit, best_hit, eval_metric, args.device_id)
 

@@ -54,18 +54,17 @@ class ItemRep(nn.Module):
         self.item_attention = AdditiveAttention(self.token_emb_dim, self.token_emb_dim)
         self.word_encoder = bert_model
 
-    def forward(self, movie_id, title, title_mask, review, review_mask, seed_keywords, seed_keywords_mask, num_review_mask):
+    def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask):
         # print("SHAPE:",self.review.shape)
         review = review.view(-1, self.args.max_review_len)  # [B X R, L]
         review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
         review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                      :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-        seed_emb = self.word_encoder(input_ids=seed_keywords,
-                                     attention_mask=seed_keywords_mask).last_hidden_state[:, 0, :]  # [M, d]
         title_emb = self.word_encoder(input_ids=title,
                                       attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
-        query_embedding = torch.add(title_emb, seed_emb) / 2
-        item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
+        # query_embedding = title_emb
+        # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
+        item_representations = title_emb
         return item_representations.tolist()
 
 
