@@ -124,19 +124,19 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
             movie_ids.extend(movie_id.tolist())
         # logger.info(movie_ids)
 
-        # for batch in train_dataloader.get_rec_data(args.batch_size):
-        #     context_entities, context_tokens, target_items = batch
-        #     scores_ft = model.forward(context_entities, context_tokens, torch.tensor(item_rep).to(args.device_id))
-        #     loss = model.criterion(scores_ft, target_items.to(args.device_id))
-        #
-        #     # loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
-        #     # loss = loss_ft + ((loss_pt) * args.loss_lambda)
-        #
-        #     total_loss += loss.data.float()
-        #     optimizer.zero_grad()
-        #     loss.backward()
-        #     optimizer.step()
-        # scheduler.step()
+        for batch in train_dataloader.get_rec_data(args.batch_size):
+            context_entities, context_tokens, target_items = batch
+            scores_ft = model.forward(context_entities, context_tokens, torch.tensor(item_rep).to(args.device_id))
+            loss = model.criterion(scores_ft, target_items.to(args.device_id))
+
+            # loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
+            # loss = loss_ft + ((loss_pt) * args.loss_lambda)
+
+            total_loss += loss.data.float()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        scheduler.step()
         finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
                             initial_hit, best_hit, eval_metric, args.device_id)
 
