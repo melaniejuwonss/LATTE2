@@ -171,7 +171,7 @@ def main(args):
     if 'rec' in args.task:
         # create result file
         results_file_path = createResultFile(args)
-        content_dataset = ContentInformation(args, DATASET_PATH, tokenizer, args.device_id)
+        # content_dataset = ContentInformation(args, DATASET_PATH, tokenizer, args.device_id)
         crs_dataset = CRSDatasetRec(args, DATASET_PATH, tokenizer, kg_information)
         train_data = crs_dataset.train_data
         valid_data = crs_dataset.valid_data
