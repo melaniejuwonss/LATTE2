@@ -177,7 +177,7 @@ def main(args):
         valid_data = crs_dataset.valid_data
         test_data = crs_dataset.test_data
 
-        item_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
+        item_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=False)
 
         # # For pre-training
         # if not args.pretrained:

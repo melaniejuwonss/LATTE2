@@ -48,12 +48,19 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
         content_hit[2] = 100 * np.mean(hit_pt[4])
 
 
-def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric):
+def finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path, initial_hit,
+                        best_hit, eval_metric, device_id):
     hit_ft = [[], [], [], [], []]
+    item_rep = []
     # Fine-tuning Test
+    for movie_id, title, title_mask, review, review_mask, seed_keywords, seed_keywords_mask, num_reviews in tqdm(
+            item_dataloader,
+            bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, seed_keywords,
+                                               seed_keywords_mask, num_reviews))
     for batch in test_dataloader.get_rec_data(shuffle=False):
         context_entities, context_tokens, target_items = batch
-        scores = model.forward(context_entities, context_tokens)
+        scores = model.forward(context_entities, context_tokens, torch.tensor(item_rep).to(device_id))
         # scores = scores[:, torch.LongTensor(model.movie2ids)]
 
         target_items = target_items.cpu().numpy()
@@ -101,7 +108,8 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
     for epoch in range(args.epoch_ft):
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        # finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
+        finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
+                            initial_hit, best_hit, eval_metric, args.device_id)
 
         item_rep = []
         # TRAIN
