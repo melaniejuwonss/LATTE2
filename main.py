@@ -134,12 +134,12 @@ def main(args):
     bert_model.resize_token_embeddings(len(tokenizer))
 
     # BERT model freeze layers
-    if args.n_layer != -1:
-        modules = [bert_model.encoder.layer[:bert_config.num_hidden_layers - args.n_layer],
-                   bert_model.embeddings]
-    for module in modules:
-        for param in module.parameters():
-            param.requires_grad = False
+    # if args.n_layer != -1:
+    #     modules = [bert_model.encoder.layer[:bert_config.num_hidden_layers - args.n_layer],
+    #                bert_model.embeddings]
+    # for module in modules:
+    #     for param in module.parameters():
+    #         param.requires_grad = False
 
     # GPT
     tokenizer_gpt = AutoTokenizer.from_pretrained(args.gpt_name)
