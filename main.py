@@ -24,7 +24,7 @@ from dataset_conv import CRSConvDataCollator, CRSConvDataset, ContentInformation
 from dataloader import CRSDataLoader
 from dataset_rec import ContentInformation, CRSDatasetRec
 from evaluate_conv import ConvEvaluator
-from model import MovieExpertCRS
+from model import MovieExpertCRS, ItemRep
 from model_gpt2 import PromptGPT2forCRS
 from parameters import parse_args
 from pretrain_conv import pretrain_conv
@@ -166,17 +166,18 @@ def main(args):
     # Load expert model
     model = MovieExpertCRS(args, bert_model, bert_config, kg_information.entity_kg, kg_information.n_entity,
                            DATASET_PATH, tokenizer, content_dataset).to(args.device_id)
+    item_rep_model = ItemRep(args, args.kg_emb_dim, bert_config.hidden_size, bert_model)
 
     if 'rec' in args.task:
         # create result file
         results_file_path = createResultFile(args)
-        # content_dataset = ContentInformation(args, DATASET_PATH, tokenizer, args.device_id)
+        content_dataset = ContentInformation(args, DATASET_PATH, tokenizer, args.device_id)
         crs_dataset = CRSDatasetRec(args, DATASET_PATH, tokenizer, kg_information)
         train_data = crs_dataset.train_data
         valid_data = crs_dataset.valid_data
         test_data = crs_dataset.test_data
 
-        # pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
+        item_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
         # # For pre-training
         # if not args.pretrained:
@@ -200,13 +201,13 @@ def main(args):
                                             cls_token=tokenizer.cls_token_id, task='rec', type=type)
 
         if args.mode == 'test':
-            content_hit, initial_hit, best_result = train_recommender(args, model, train_rec_dataloader,
-                                                                      test_rec_dataloader,
+            content_hit, initial_hit, best_result = train_recommender(args, model, item_rep_model, train_rec_dataloader,
+                                                                      test_rec_dataloader, item_dataloader,
                                                                       trained_path, results_file_path
                                                                       )
         elif args.mode == 'valid':
-            content_hit, initial_hit, best_result = train_recommender(args, model, train_rec_dataloader,
-                                                                      valid_rec_dataloader,
+            content_hit, initial_hit, best_result = train_recommender(args, model, item_rep_model, train_rec_dataloader,
+                                                                      valid_rec_dataloader, item_dataloader,
                                                                       trained_path, results_file_path
                                                                       )
 

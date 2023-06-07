@@ -91,8 +91,13 @@ class ContentInformation(Dataset):
 
     def __getitem__(self, item):
         idx = self.key_list[item]  # entity id
+        title = self.data_samples[idx]['title']
+        title_mask = self.data_samples[idx]['title_mask']
         review_token = self.data_samples[idx]['review']
         review_mask = self.data_samples[idx]['review_mask']
+        seed_keywords = self.data_samples[idx]['seed_keywords']
+        seed_keywords_mask = self.data_samples[idx]['seed_keywords_mask']
+        num_reviews = self.data_samples[idx]['num_reviews']
 
         # review_exist_num = np.count_nonzero(np.sum(np.array(review_mask), axis=1))
         #
@@ -104,11 +109,16 @@ class ContentInformation(Dataset):
         # review_token = [review_token[k] for k in review_sample_idx]
         # review_mask = [review_mask[k] for k in review_sample_idx]
 
-        idx = torch.tensor(idx)
-        review_token = torch.LongTensor(review_token)
-        review_mask = torch.LongTensor(review_mask)
+        idx = torch.tensor(int(idx)).to(self.args.device_id)
+        title = torch.LongTensor(title).to(self.args.device_id)  # [L, ]
+        title_mask = torch.LongTensor(title_mask).to(self.args.device_id)  # [L, ]
+        review_token = torch.LongTensor(review_token).to(self.args.device_id)  # [R, L]
+        review_mask = torch.LongTensor(review_mask).to(self.args.device_id)  # [R, L]
+        seed_keywords = torch.LongTensor(seed_keywords).to(self.args.device_id)  # [L, ]
+        seed_keywords_mask = torch.LongTensor(seed_keywords_mask).to(self.args.device_id)  # [L, ]
+        num_review_mask = torch.tensor([1] * num_reviews + [0] * (self.args.n_review - num_reviews)).to(self.args.device_id)
 
-        return idx, review_token, review_mask
+        return idx, title, title_mask, review_token, review_mask, seed_keywords, seed_keywords_mask, num_review_mask
 
     def __len__(self):
         return len(self.data_samples)

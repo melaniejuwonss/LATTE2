@@ -23,51 +23,50 @@ class MultiOutput(ModelOutput):
     logits: Optional[torch.FloatTensor] = None
 
 
-class get_itemrepresentations(nn.Module):
-    def __init__(self, content_dataset, args, tokenizer, device_id, kg_emb_dim, token_emb_dim, bert_model):
-        super(get_itemrepresentations, self).__init__()
+class ItemRep(nn.Module):
+    def __init__(self, args, kg_emb_dim, token_emb_dim, bert_model):
+        super(ItemRep, self).__init__()
         self.args = args
-        self.content_dataset = content_dataset
-        self.review = torch.tensor(
-            [self.content_dataset[crs_id]['review'] for crs_id in list((self.content_dataset.keys()))]).to(
-            self.args.device_id)
-        self.review_mask = torch.tensor([self.content_dataset[crs_id]['review_mask'] for crs_id in
-                                         list((self.content_dataset.keys()))]).to(self.args.device_id)
-        self.title = torch.tensor(
-            [self.content_dataset[crs_id]['title'] for crs_id in list((self.content_dataset.keys()))]).to(
-            self.args.device_id)
-        self.title_mask = torch.tensor(
-            [self.content_dataset[crs_id]['title_mask'] for crs_id in list((self.content_dataset.keys()))]).to(
-            self.args.device_id)
-        self.seed_keywords = torch.tensor(
-            [self.content_dataset[crs_id]['seed_keywords'] for crs_id in list((self.content_dataset.keys()))]).to(
-            self.args.device_id)
-        self.seed_keywords_mask = torch.tensor(
-            [self.content_dataset[crs_id]['seed_keywords_mask'] for crs_id in list((self.content_dataset.keys()))]).to(
-            self.args.device_id)
-        self.num_reviews = [self.content_dataset[crs_id]['num_reviews'] for crs_id in
-                            list((self.content_dataset.keys()))]
-        self.num_review_mask = torch.tensor(
-            [[1] * numbs + [0] * (self.args.n_review - numbs) for numbs in self.num_reviews]).to(self.args.device_id)
+        # self.content_dataset = content_dataset
+        # self.review = torch.tensor(
+        #     [self.content_dataset[crs_id]['review'] for crs_id in list((self.content_dataset.keys()))]).to(
+        #     self.args.device_id)
+        # self.review_mask = torch.tensor([self.content_dataset[crs_id]['review_mask'] for crs_id in
+        #                                  list((self.content_dataset.keys()))]).to(self.args.device_id)
+        # self.title = torch.tensor(
+        #     [self.content_dataset[crs_id]['title'] for crs_id in list((self.content_dataset.keys()))]).to(
+        #     self.args.device_id)
+        # self.title_mask = torch.tensor(
+        #     [self.content_dataset[crs_id]['title_mask'] for crs_id in list((self.content_dataset.keys()))]).to(
+        #     self.args.device_id)
+        # self.seed_keywords = torch.tensor(
+        #     [self.content_dataset[crs_id]['seed_keywords'] for crs_id in list((self.content_dataset.keys()))]).to(
+        #     self.args.device_id)
+        # self.seed_keywords_mask = torch.tensor(
+        #     [self.content_dataset[crs_id]['seed_keywords_mask'] for crs_id in list((self.content_dataset.keys()))]).to(
+        #     self.args.device_id)
+        # self.num_reviews = [self.content_dataset[crs_id]['num_reviews'] for crs_id in
+        #                     list((self.content_dataset.keys()))]
+        # self.num_review_mask = torch.tensor(
+        #     [[1] * numbs + [0] * (self.args.n_review - numbs) for numbs in self.num_reviews]).to(self.args.device_id)
         self.kg_emb_dim = kg_emb_dim
         self.token_emb_dim = token_emb_dim
         self.item_attention = AdditiveAttention(self.token_emb_dim, self.token_emb_dim)
         self.word_encoder = bert_model
 
-    def forward(self):
+    def forward(self, movie_id, title, title_mask, review, review_mask, seed_keywords, seed_keywords_mask, num_review_mask):
         # print("SHAPE:",self.review.shape)
-        review = self.review.view(-1, self.args.max_review_len)  # [M X R, L]
-        review_mask = self.review_mask.view(-1, self.args.max_review_len)  # [M X R, L]
+        review = review.view(-1, self.args.max_review_len)  # [B X R, L]
+        review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
         review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                      :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-        seed_emb = self.word_encoder(input_ids=self.seed_keywords,
-                                     attention_mask=self.seed_keywords_mask).last_hidden_state[:, 0, :]  # [M, d]
-        title_emb = self.word_encoder(input_ids=self.title,
-                                      attention_mask=self.title_mask).last_hidden_state[:, 0, :]  # [M, d]
-        # query_embedding = torch.add(title_emb, seed_emb) / 2
-        # item_representations = self.item_attention(review_emb, query_embedding, self.num_review_mask)
-        item_representations = torch.sum(torch.stack([title_emb, seed_emb, torch.sum(review_emb, dim=1)]), dim=0) / (review_emb.shape[1] + 2)
-        return item_representations
+        seed_emb = self.word_encoder(input_ids=seed_keywords,
+                                     attention_mask=seed_keywords_mask).last_hidden_state[:, 0, :]  # [M, d]
+        title_emb = self.word_encoder(input_ids=title,
+                                      attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+        query_embedding = torch.add(title_emb, seed_emb) / 2
+        item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
+        return item_representations.tolist()
 
 
 class MovieExpertCRS(nn.Module):
@@ -106,9 +105,9 @@ class MovieExpertCRS(nn.Module):
         self.entity_proj = nn.Linear(self.kg_emb_dim, self.token_emb_dim)
         self.entity_attention = SelfDotAttention(self.kg_emb_dim, self.kg_emb_dim)
         self.content_dataset = content_dataset
-        self.item_representations = get_itemrepresentations(self.content_dataset.data_samples, args,
-                                                            self.tokenizer, self.device_id, self.kg_emb_dim,
-                                                            self.token_emb_dim, bert_model)
+        # self.item_representations = get_itemrepresentations(self.content_dataset.data_samples, args,
+        #                                                     self.tokenizer, self.device_id, self.kg_emb_dim,
+        #                                                     self.token_emb_dim, bert_model)
 
         # Gating
         self.gating = nn.Linear(2 * self.kg_emb_dim, self.kg_emb_dim)
@@ -259,7 +258,7 @@ class MovieExpertCRS(nn.Module):
     #
     #     return entity_representations, entity_padding_mask, kg_embedding, token_embedding_prev, token_padding_mask, user_embedding
 
-    def forward(self, context_entities, context_tokens):
+    def forward(self, context_entities, context_tokens, item_rep):
         token_embedding, token_padding_mask = self.get_representations(context_entities, context_tokens)
         # token_embedding = self.linear_transformation(token_embedding)
         token_attn_rep = token_embedding[:, 0, :]
@@ -272,6 +271,6 @@ class MovieExpertCRS(nn.Module):
 
         # gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
         user_embedding = token_attn_rep
-        item_rep = self.item_representations()
+        # item_rep = self.item_representations()
         scores = F.linear(user_embedding, item_rep)
         return scores

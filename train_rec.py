@@ -89,7 +89,8 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initia
             best_hit[k] = np.mean(hit_ft[k])
 
 
-def train_recommender(args, model, train_dataloader, test_dataloader, path, results_file_path):
+def train_recommender(args, model, item_rep_model, train_dataloader, test_dataloader, item_dataloader, path,
+                      results_file_path):
     best_hit = [[], [], [], [], []]
     initial_hit = [[], [], []]
     content_hit = [[], [], []]
@@ -100,8 +101,9 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
     for epoch in range(args.epoch_ft):
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
+        # finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
 
+        item_rep = []
         # TRAIN
         model.train()
         total_loss = 0
@@ -109,9 +111,15 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         logger.info(f'[Recommendation epoch {str(epoch)}]')
         logger.info('[Train]')
 
+        for movie_id, title, title_mask, review, review_mask, seed_keywords, seed_keywords_mask, num_reviews in tqdm(
+                item_dataloader,
+                bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, seed_keywords,
+                                                   seed_keywords_mask, num_reviews))
+
         for batch in train_dataloader.get_rec_data(args.batch_size):
             context_entities, context_tokens, target_items = batch
-            scores_ft = model.forward(context_entities, context_tokens)
+            scores_ft = model.forward(context_entities, context_tokens, torch.tensor(item_rep).to(args.device_id))
             loss = model.criterion(scores_ft, target_items.to(args.device_id))
 
             # loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
