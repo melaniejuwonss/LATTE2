@@ -47,19 +47,25 @@ class ContentInformation(Dataset):
             #     continue
 
             title = self.movie2name[crs_id][1]
-            seed_keywords = genre + director + writers + stars
+            seed_keywords = genre + " " + director + " " + writers + " " + stars
             phrase_num = min(len(phrases), self.args.n_review)
             #     phrases = ['']
 
-            tokenized_title = self.tokenizer(title + seed_keywords, max_length=max_review_len,
-                                             padding='max_length',
-                                             truncation=True,
-                                             add_special_tokens=True)
             if len(phrases) != 0:
                 tokenized_phrases = self.tokenizer(phrases, max_length=max_review_len,
                                                    padding='max_length',
                                                    truncation=True,
                                                    add_special_tokens=True)
+                tokenized_title = self.tokenizer(title + " " + seed_keywords + " " + phrases[0],
+                                                 max_length=max_review_len,
+                                                 padding='max_length',
+                                                 truncation=True,
+                                                 add_special_tokens=True)
+            else:
+                tokenized_title = self.tokenizer(title + " " + seed_keywords, max_length=max_review_len,
+                                                 padding='max_length',
+                                                 truncation=True,
+                                                 add_special_tokens=True)
 
             for i in range(min(len(phrases), self.args.n_review)):
                 phrase_list.append(tokenized_phrases.input_ids[i])
@@ -105,7 +111,8 @@ class ContentInformation(Dataset):
         title_mask = torch.LongTensor(title_mask).to(self.args.device_id)  # [L, ]
         review_token = torch.LongTensor(review_token).to(self.args.device_id)  # [R, L]
         review_mask = torch.LongTensor(review_mask).to(self.args.device_id)  # [R, L]
-        num_review_mask = torch.tensor([1] * num_reviews + [0] * (self.args.n_review - num_reviews)).to(self.args.device_id)
+        num_review_mask = torch.tensor([1] * num_reviews + [0] * (self.args.n_review - num_reviews)).to(
+            self.args.device_id)
 
         return idx, title, title_mask, review_token, review_mask, num_review_mask
 
