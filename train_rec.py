@@ -121,7 +121,7 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
         for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
                                                                                   bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews))
-            movie_ids.extend(movie_id.tolist())
+            # movie_ids.extend(movie_id.tolist())
         # logger.info(movie_ids)
 
         for batch in train_dataloader.get_rec_data(args.batch_size):
@@ -137,14 +137,15 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
             loss.backward()
             optimizer.step()
         scheduler.step()
-        finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
+        finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch + 1, results_file_path,
                             initial_hit, best_hit, eval_metric, args.device_id)
 
         print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
     # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-    finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
+    finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
+                        initial_hit, best_hit, eval_metric, args.device_id)
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
