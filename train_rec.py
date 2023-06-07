@@ -57,7 +57,7 @@ def finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader,
                                                                               bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews))
         movie_ids.extend(movie_id.tolist())
-    logger.info(movie_ids)
+    # logger.info(movie_ids)
     for batch in test_dataloader.get_rec_data(shuffle=False):
         context_entities, context_tokens, target_items = batch
         scores = model.forward(context_entities, context_tokens, torch.tensor(item_rep).to(device_id))
@@ -122,7 +122,7 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
                                                                                   bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews))
             movie_ids.extend(movie_id.tolist())
-        logger.info(movie_ids)
+        # logger.info(movie_ids)
 
         # for batch in train_dataloader.get_rec_data(args.batch_size):
         #     context_entities, context_tokens, target_items = batch
