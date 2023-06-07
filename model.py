@@ -113,7 +113,7 @@ class MovieExpertCRS(nn.Module):
 
         # Loss
         self.criterion = nn.CrossEntropyLoss()
-        self.linear_output = nn.Linear(self.kg_emb_dim, self.n_entity)
+        self.linear_output = nn.Linear(self.kg_emb_dim, 6923)
 
         # initialize all parameter (except for pretrained BERT)
         self.initialize()
