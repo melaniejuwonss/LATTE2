@@ -108,12 +108,13 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
     for epoch in range(args.epoch_ft):
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
-                            initial_hit, best_hit, eval_metric, args.device_id)
+        # finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
+        #                     initial_hit, best_hit, eval_metric, args.device_id)
 
-        item_rep = []
+        item_rep, movie_ids = [], []
         # TRAIN
         model.train()
+        item_rep_model.train()
         total_loss = 0
 
         logger.info(f'[Recommendation epoch {str(epoch)}]')
@@ -124,6 +125,8 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
                 bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, seed_keywords,
                                                    seed_keywords_mask, num_reviews))
+            movie_ids.append(movie_id)
+
 
         for batch in train_dataloader.get_rec_data(args.batch_size):
             context_entities, context_tokens, target_items = batch
