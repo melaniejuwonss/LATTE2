@@ -51,7 +51,6 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
 def finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path, initial_hit,
                         best_hit, eval_metric, device_id, item_rep):
     hit_ft = [[], [], [], [], []]
-    item_rep, movie_ids = [], []
     # Fine-tuning Test
     # for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
     #                                                                           bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
