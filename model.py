@@ -275,7 +275,7 @@ class MovieExpertCRS(nn.Module):
         # gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
         # user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
         # item_rep = self.item_representations()
-        user_embedding = token_embedding
+        user_embedding = token_attn_rep
         if self.args.prediction == 0:
             scores = F.linear(user_embedding, item_rep)
         else:
