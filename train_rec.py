@@ -116,9 +116,6 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
     # logger.info(item_rep[0])
     for epoch in range(args.epoch_ft):
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
-                            initial_hit, best_hit, eval_metric, args.device_id, item_rep)
-
 
         # TRAIN
         model.train()
@@ -144,11 +141,13 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
         scheduler.step()
 
         print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
+        finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
+                            initial_hit, best_hit, eval_metric, args.device_id, torch.tensor(item_rep).to(args.device_id))
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
     # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
     finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
-                        initial_hit, best_hit, eval_metric, args.device_id, item_rep)
+                        initial_hit, best_hit, eval_metric, args.device_id, torch.tensor(item_rep).to(args.device_id))
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
