@@ -126,7 +126,7 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
             item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews))
             # movie_ids.extend(movie_id.tolist())
         # logger.info(movie_ids)
-        logger.info(item_rep[0])
+        # logger.info(item_rep[0])
         for batch in train_dataloader.get_rec_data(args.batch_size):
             context_entities, context_tokens, target_items = batch
             scores_ft = model.forward(context_entities, context_tokens, torch.tensor(item_rep).to(args.device_id))
