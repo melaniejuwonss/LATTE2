@@ -114,6 +114,8 @@ class MovieExpertCRS(nn.Module):
         # Loss
         self.criterion = nn.CrossEntropyLoss()
         self.linear_output = nn.Linear(self.token_emb_dim, 6923)
+        for name, para in self.linear_output.named_parameters():
+            para.requires_grad = False
         self.freezed_item_rep = nn.Parameter(nn.init.uniform_(torch.FloatTensor(self.token_emb_dim, 6923)), requires_grad=False)
         # self.unfreezed_item_rep = nn.Parameter(nn.init.uniform_(torch.FloatTensor(self.token_emb_dim, 6923)), requires_grad=True)
 
