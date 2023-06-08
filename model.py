@@ -231,15 +231,15 @@ class MovieExpertCRS(nn.Module):
     #     return item_representations
 
     def get_representations(self, context_entities, context_tokens):
-        # kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
-        # entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
+        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
+        entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
 
-        # entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
+        entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
         token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
                                             attention_mask=token_padding_mask.to(
                                                 self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
-        return token_embedding, token_padding_mask
+        return token_embedding, token_padding_mask, entity_representations, entity_padding_mask
 
     # def get_representationsWithUser(self, context_entities, context_tokens):
     #     token_embedding_prev, token_padding_mask = self.get_representations(
@@ -262,7 +262,7 @@ class MovieExpertCRS(nn.Module):
     #     return entity_representations, entity_padding_mask, kg_embedding, token_embedding_prev, token_padding_mask, user_embedding
 
     def forward(self, context_entities, context_tokens, item_rep):
-        token_embedding, token_padding_mask = self.get_representations(context_entities, context_tokens)
+        token_embedding, token_padding_mask, entity_representations, entity_padding_mask = self.get_representations(context_entities, context_tokens)
         # token_embedding = self.linear_transformation(token_embedding)
         token_attn_rep = token_embedding[:, 0, :]
         # entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
@@ -273,8 +273,11 @@ class MovieExpertCRS(nn.Module):
         # entity_attn_rep = self.dropout_ft(entity_attn_rep)
 
         # gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
-        user_embedding = token_attn_rep
+        # user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
         # item_rep = self.item_representations()
-        scores = F.linear(user_embedding, item_rep)
-        # scores = self.linear_output(user_embedding)
+        user_embedding = token_embedding
+        if self.args.prediction == 0:
+            scores = F.linear(user_embedding, item_rep)
+        else:
+            scores = self.linear_output(user_embedding)
         return scores

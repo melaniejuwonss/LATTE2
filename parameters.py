@@ -16,14 +16,15 @@ def parse_args():
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--mode', type=str, default='test', choices=['valid','test'])
     parser.add_argument('--dataset_path', type=str, default='data/redial', choices=['data/redial', 'data/inspired'])
+    parser.add_argument('--prediction', type=int, default=0)
 
     # rec
-    parser.add_argument('--n_review', type=int, default=9)
+    parser.add_argument('--n_review', type=int, default=10)
     parser.add_argument('--n_meta', type=int, default=5)
     # parser.add_argument('--meta', type=str, default='word',
     #                     choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
     parser.add_argument('--n_sample', type=int, default=1, help='sampling')
-    parser.add_argument('--max_review_len', type=int, default=128)  # 50, 100, 150, 200, 250, (300)
+    parser.add_argument('--max_review_len', type=int, default=32)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--epoch_pt', type=int, default=30)  # [NEW] # epochs of pre-training
     parser.add_argument('--epoch_ft', type=int, default=10)  # [NEW] # epochs if fine-tuning
     parser.add_argument('--batch_size', type=int, default=2)
