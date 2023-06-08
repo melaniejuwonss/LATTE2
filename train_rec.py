@@ -109,6 +109,8 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
     for epoch in range(args.epoch_ft):
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
+        finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
+                            initial_hit, best_hit, eval_metric, args.device_id)
 
         item_rep, movie_ids = [], []
         # TRAIN
@@ -138,8 +140,6 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
             loss.backward()
             optimizer.step()
         scheduler.step()
-        finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch + 1, results_file_path,
-                            initial_hit, best_hit, eval_metric, args.device_id)
 
         print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
@@ -150,4 +150,4 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
-    return content_hit, initial_hit, best_result
+    return best_result
