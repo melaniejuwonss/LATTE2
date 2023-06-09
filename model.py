@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from typing import Tuple, Optional
 import os
 from tqdm import tqdm
-
+from loguru import logger
 
 @dataclass
 class MultiOutput(ModelOutput):
@@ -54,13 +54,14 @@ class ItemRep(nn.Module):
         self.item_attention = AdditiveAttention(self.token_emb_dim, self.token_emb_dim)
         self.word_encoder = bert_model
 
-    def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask):
+    def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask, bert_model):
+        logger.info("Item encoder:", bert_model.encoder.layer[0].attention.self.value.weight[0][0:5])
         # print("SHAPE:",self.review.shape)
         review = review.view(-1, self.args.max_review_len)  # [B X R, L]
         review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
-        review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
+        review_emb = bert_model(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                      :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-        title_emb = self.word_encoder(input_ids=title,
+        title_emb = bert_model(input_ids=title,
                                       attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
         # query_embedding = title_emb
         # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
@@ -178,61 +179,8 @@ class MovieExpertCRS(nn.Module):
             return scores, target_item
         return loss
 
-    # def get_itemrepresentations(self, read_data, args):
-    #     item_representations = []
-    #     all_phrase_list, all_phrase_mask_list, all_title_list = [], [], []
-    #     for sample in tqdm(read_data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-    #         phrase_list, phrase_mask_list = [], []
-    #
-    #         crs_id = str(sample['crs_id'])
-    #         title = sample['title']
-    #         year = sample['year']
-    #         if year == None:
-    #             movie = title
-    #         else:
-    #             movie = title + '(' + year + ')'
-    #         phrases = sample['phrases']
-    #         phrases.append(movie)  # ego edge
-    #
-    #         # if self.movie2name[crs_id][0] == -1:
-    #         #     continue
-    #
-    #         if len(phrases) == 0:
-    #             phrases = ['']
-    #
-    #         tokenized_title = self.tokenizer(movie, max_length=args.max_review_len,
-    #                                          padding='max_length',
-    #                                          truncation=True,
-    #                                          add_special_tokens=True)
-    #
-    #         tokenized_phrases = self.tokenizer(phrases, max_length=args.max_review_len,
-    #                                            padding='max_length',
-    #                                            truncation=True,
-    #                                            add_special_tokens=True)
-    #
-    #         for i in range(len(phrases)):
-    #             phrase_list.append(tokenized_phrases.input_ids[i])
-    #             phrase_mask_list.append(1)
-    #
-    #         for i in range(11 - len(phrases)):
-    #             phrase_mask_list.append(0)
-    #             phrase_list.extend(self.tokenizer([''], max_length=args.max_review_len,
-    #                                               padding='max_length',
-    #                                               truncation=True,
-    #                                               add_special_tokens=True).input_ids)
-    #
-    #         all_phrase_list.append(phrase_list)
-    #         all_title_list.append(tokenized_title.input_ids)
-    #         all_phrase_mask_list.append(phrase_mask_list)
-    #
-    #     all_phrase_list = torch.tensor(all_phrase_list).to(self.device_id).float()  # [MOVIE, LEN, DIM]
-    #     all_title_list = torch.tensor(all_title_list).to(self.device_id).float()  # [MOVIE, DIM]
-    #     all_phrase_mask_list = torch.tensor(all_phrase_mask_list).to(self.device_id).float()  # [MOVIE, LEN]
-    #     item_representations = self.item_attention(all_phrase_list, all_title_list, all_phrase_mask_list)
-    #
-    #     return item_representations
-
     def get_representations(self, context_entities, context_tokens):
+        logger.info("Fine-tuning encoder:", self.word_encoder.encoder.layer[0].attention.self.value.weight[0][0:5])
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
         entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
