@@ -109,8 +109,9 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
-    item_rep_bert = deepcopy(model.word_encoder)
+
     for epoch in range(args.epoch_ft):
+        item_rep_bert = deepcopy(model.word_encoder)
         logger.info("Fine-tuning")
         logger.info(model.word_encoder.encoder.layer[0].attention.self.value.weight[0][0:5].data)
         logger.info("Item encoder")
