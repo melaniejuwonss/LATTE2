@@ -50,13 +50,15 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
 
 
 def finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path, initial_hit,
-                        best_hit, eval_metric, device_id):
+                        best_hit, eval_metric, device_id, bert_model):
     hit_ft = [[], [], [], [], []]
     movie_ids, item_rep = [], []
     # Fine-tuning Test
+    logger.info("Item encoder")
+    logger.info(bert_model.encoder.layer[0].attention.self.value.weight[0][0:5].data)
     for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
                                                                               bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews))
+        item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews, bert_model))
         movie_ids.extend(movie_id.tolist())
     # logger.info(item_rep[0])
     # logger.info(movie_ids)
@@ -112,8 +114,8 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
     for epoch in range(args.epoch_ft):
         bert_model = deepcopy(model.word_encoder)
-        logger.info("Item embedding encoder:", bert_model.encoder.layer[0].attention.self.value.weight[0][0:5])
-        logger.info("Fine-tuning encoder:", model.word_encoder.encoder.layer[0].attention.self.value.weight[0][0:5])
+        logger.info("Fine-tuning")
+        logger.info(model.word_encoder.encoder.layer[0].attention.self.value.weight[0][0:5].data)
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
 
         # TRAIN
@@ -147,12 +149,12 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
         print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
         finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch + 1, results_file_path,
-                            initial_hit, best_hit, eval_metric, args.device_id)
+                            initial_hit, best_hit, eval_metric, args.device_id, bert_model)
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
     # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
     finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch + 1, results_file_path,
-                        initial_hit, best_hit, eval_metric, args.device_id)
+                        initial_hit, best_hit, eval_metric, args.device_id, bert_model)
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
