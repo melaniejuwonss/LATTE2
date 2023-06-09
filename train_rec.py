@@ -1,3 +1,4 @@
+from copy import deepcopy
 from math import ceil
 
 import torch
@@ -49,13 +50,13 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
 
 
 def finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path, initial_hit,
-                        best_hit, eval_metric, device_id):
+                        best_hit, eval_metric, device_id, item_rep_bert):
     hit_ft = [[], [], [], [], []]
     item_rep, movie_ids = [], []
     # Fine-tuning Test
     for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
                                                                               bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews))
+        item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews, item_rep_bert))
         movie_ids.extend(movie_id.tolist())
     # logger.info(item_rep[0])
     # logger.info(movie_ids)
@@ -108,15 +109,15 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
-
+    item_rep_bert = deepcopy(model.word_encoder)
     for epoch in range(args.epoch_ft):
         logger.info("Fine-tuning")
         logger.info(model.word_encoder.encoder.layer[0].attention.self.value.weight[0][0:5].data)
         logger.info("Item encoder")
-        logger.info(item_rep_model.word_encoder.encoder.layer[0].attention.self.value.weight[0][0:5].data)
+        logger.info(item_rep_bert.encoder.layer[0].attention.self.value.weight[0][0:5].data)
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
         finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
-                            initial_hit, best_hit, eval_metric, args.device_id)
+                            initial_hit, best_hit, eval_metric, args.device_id, item_rep_bert)
 
         item_rep, movie_ids = [], []
         # TRAIN
@@ -129,7 +130,7 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
         for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
                                                                                   bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews))
+            item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews, item_rep_bert))
             # movie_ids.extend(movie_id.tolist())
         # logger.info(movie_ids)
         # logger.info(item_rep[0])
@@ -153,7 +154,7 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
     # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
     finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
-                        initial_hit, best_hit, eval_metric, args.device_id)
+                        initial_hit, best_hit, eval_metric, args.device_id, item_rep_bert)
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
