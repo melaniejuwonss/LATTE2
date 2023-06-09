@@ -111,6 +111,9 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
 
     for epoch in range(args.epoch_ft):
+        bert_model = deepcopy(model.word_encoder)
+        logger.info("Item embedding encoder:", bert_model.encoder.layer[0].attention.self.value.weight[0][0:5])
+        logger.info("Fine-tuning encoder:", model.word_encoder.encoder.layer[0].attention.self.value.weight[0][0:5])
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
 
         # TRAIN
@@ -120,7 +123,7 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
         logger.info(f'[Recommendation epoch {str(epoch)}]')
         logger.info('[Train]')
-        bert_model = deepcopy(model.word_encoder)
+
         for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
                                                                                   bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews, bert_model))

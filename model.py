@@ -55,7 +55,6 @@ class ItemRep(nn.Module):
         self.word_encoder = bert_model
 
     def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask, bert_model):
-        logger.info("Item encoder:", bert_model.encoder.layer[0].attention.self.value.weight[0][0:5])
         # print("SHAPE:",self.review.shape)
         review = review.view(-1, self.args.max_review_len)  # [B X R, L]
         review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
@@ -180,7 +179,6 @@ class MovieExpertCRS(nn.Module):
         return loss
 
     def get_representations(self, context_entities, context_tokens):
-        logger.info("Fine-tuning encoder:", self.word_encoder.encoder.layer[0].attention.self.value.weight[0][0:5])
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
         entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
