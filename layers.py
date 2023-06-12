@@ -10,7 +10,7 @@ class AdditiveAttention(nn.Module):
         self.hidden_size = feature_dim
         self.Wk = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True).to(device_id)
         self.Wq = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True).to(device_id)
-        self.Wp = nn.Linear(in_features=attention_dim, out_features=1, bias=False).cuda()
+        self.Wp = nn.Linear(in_features=attention_dim, out_features=1, bias=False).to(device_id)
 
     def initialize(self):
         nn.init.xavier_uniform_(self.Wk.weight, gain=nn.init.calculate_gain('tanh'))
