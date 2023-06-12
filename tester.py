@@ -61,8 +61,8 @@ if __name__ == '__main__':
 
         # print(content_hits)
 
-        avg_content_hits = np.mean(np.array(content_hits), axis=0)
-        avg_initial_hits = np.mean(np.array(initial_hits), axis=0)
+        # avg_content_hits = np.mean(np.array(content_hits), axis=0)
+        # avg_initial_hits = np.mean(np.array(initial_hits), axis=0)
         avg_best_results = np.mean(np.array(best_results), axis=0)
 
         # parameters
