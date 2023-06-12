@@ -60,8 +60,8 @@ class ItemRep(nn.Module):
         review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
         review_emb = item_rep_bert(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                      :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-        title_emb = item_rep_bert(input_ids=title,
-                                      attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+        # title_emb = item_rep_bert(input_ids=title,
+        #                               attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
         # query_embedding = title_emb
         # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
         item_representations = torch.mean(review_emb, dim=1)
