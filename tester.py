@@ -68,8 +68,8 @@ if __name__ == '__main__':
         # parameters
         with open(results_file_path, 'a', encoding='utf-8') as result_f:
             result_f.write('[AVERAGE]\n')
-            result_f.write('content_hits:\t' + '\t'.join(format(x, ".2f") for x in avg_content_hits) + '\n')
-            result_f.write('initial_hits:\t' + '\t'.join(format(x, ".2f") for x in avg_initial_hits) + '\n')
+            # result_f.write('content_hits:\t' + '\t'.join(format(x, ".2f") for x in avg_content_hits) + '\n')
+            # result_f.write('initial_hits:\t' + '\t'.join(format(x, ".2f") for x in avg_initial_hits) + '\n')
             result_f.write('best_hits:\t' + '\t'.join(format(x, ".2f") for x in avg_best_results) + '\n')
     elif 'conv' in args.task:
         for t in range(args.num_trial):
