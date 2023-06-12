@@ -5,11 +5,11 @@ import math
 
 
 class AdditiveAttention(nn.Module):
-    def __init__(self, feature_dim: int, attention_dim: int):
+    def __init__(self, feature_dim: int, attention_dim: int, device_id: int):
         super(AdditiveAttention, self).__init__()
         self.hidden_size = feature_dim
-        self.Wk = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True).cuda()
-        self.Wq = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True).cuda()
+        self.Wk = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True).to(device_id)
+        self.Wq = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True).to(device_id)
         self.Wp = nn.Linear(in_features=attention_dim, out_features=1, bias=False).cuda()
 
     def initialize(self):

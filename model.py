@@ -51,7 +51,7 @@ class ItemRep(nn.Module):
         #     [[1] * numbs + [0] * (self.args.n_review - numbs) for numbs in self.num_reviews]).to(self.args.device_id)
         self.kg_emb_dim = kg_emb_dim
         self.token_emb_dim = token_emb_dim
-        self.item_attention = AdditiveAttention(self.token_emb_dim, self.token_emb_dim)
+        self.item_attention = AdditiveAttention(self.token_emb_dim, self.token_emb_dim, self.args.device_id)
         self.word_encoder = bert_model
 
     def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask, item_rep_bert):
@@ -99,7 +99,7 @@ class MovieExpertCRS(nn.Module):
         self.bert_config = bert_config
         self.word_encoder = bert_model
         self.cls = BertOnlyMLMHead(bert_config)
-        self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
+        self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim, self.args.device_id)
         self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
         self.entity_proj = nn.Linear(self.kg_emb_dim, self.token_emb_dim)
         self.entity_attention = SelfDotAttention(self.kg_emb_dim, self.kg_emb_dim)
