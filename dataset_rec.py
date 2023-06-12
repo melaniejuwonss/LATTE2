@@ -60,7 +60,7 @@ class ContentInformation(Dataset):
                                                    padding='max_length',
                                                    truncation=True,
                                                    add_special_tokens=True)
-                tokenized_title = self.tokenizer(title + " " + seed_keywords,
+                tokenized_title = self.tokenizer(title + " " + seed_keywords + " " + reviews[0],
                                                  max_length=max_review_len,
                                                  padding='max_length',
                                                  truncation=True,
