@@ -38,6 +38,7 @@ class ContentInformation(Dataset):
 
             crs_id = str(sample[1]['crs_id'])
             phrases = sample[1]['phrases'][:self.args.n_review]
+            reviews = sample[0]['review']
             genre = " ".join(sample[0]['meta']['genre'])
             director = " ".join(sample[0]['meta']['director'])
             writers = " ".join(sample[0]['meta']['writers'])
@@ -51,8 +52,11 @@ class ContentInformation(Dataset):
             phrase_num = min(len(phrases), self.args.n_review)
             #     phrases = ['']
 
-            if len(phrases) != 0:
-                tokenized_phrases = self.tokenizer(phrases, max_length=max_review_len,
+            if len(reviews) != 0:
+                review_sample_idx = [random.randint(0, len(reviews) - 1) for _ in range(self.args.n_review)]
+
+                sampled_reviews = [reviews[k] for k in review_sample_idx]
+                tokenized_phrases = self.tokenizer(sampled_reviews, max_length=max_review_len,
                                                    padding='max_length',
                                                    truncation=True,
                                                    add_special_tokens=True)
@@ -67,11 +71,11 @@ class ContentInformation(Dataset):
                                                  truncation=True,
                                                  add_special_tokens=True)
 
-            for i in range(min(len(phrases), self.args.n_review)):
+            for i in range(min(len(sampled_reviews), self.args.n_review)):
                 phrase_list.append(tokenized_phrases.input_ids[i])
                 phrase_mask_list.append(tokenized_phrases.attention_mask[i])
 
-            for i in range(self.args.n_review - len(phrases)):
+            for i in range(self.args.n_review - len(sampled_reviews)):
                 zero_vector = [0] * max_review_len
                 phrase_list.append(zero_vector)
                 phrase_mask_list.append(zero_vector)

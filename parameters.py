@@ -24,7 +24,7 @@ def parse_args():
     # parser.add_argument('--meta', type=str, default='word',
     #                     choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
     parser.add_argument('--n_sample', type=int, default=1, help='sampling')
-    parser.add_argument('--max_review_len', type=int, default=32)  # 50, 100, 150, 200, 250, (300)
+    parser.add_argument('--max_review_len', type=int, default=128)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--epoch_pt', type=int, default=30)  # [NEW] # epochs of pre-training
     parser.add_argument('--epoch_ft', type=int, default=10)  # [NEW] # epochs if fine-tuning
     parser.add_argument('--batch_size', type=int, default=2)

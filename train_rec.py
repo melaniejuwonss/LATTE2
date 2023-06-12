@@ -152,7 +152,7 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
         print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
-
+    item_rep_bert = deepcopy(model.word_encoder)
     # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
     finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
                         initial_hit, best_hit, eval_metric, args.device_id, item_rep_bert)
