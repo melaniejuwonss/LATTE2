@@ -55,17 +55,18 @@ class ContentInformation(Dataset):
             if len(reviews) != 0:
                 review_sample_idx = [random.randint(0, len(reviews) - 1) for _ in range(self.args.n_review)]
 
-                sampled_reviews = [reviews[k] for k in review_sample_idx]
+                sampled_reviews = [title + " " + seed_keywords + " " + reviews[k] for k in review_sample_idx]
                 tokenized_phrases = self.tokenizer(sampled_reviews, max_length=max_review_len,
                                                    padding='max_length',
                                                    truncation=True,
                                                    add_special_tokens=True)
-                tokenized_title = self.tokenizer(title + " " + seed_keywords + " " + reviews[0],
+                tokenized_title = self.tokenizer(title + " " + seed_keywords,
                                                  max_length=max_review_len,
                                                  padding='max_length',
                                                  truncation=True,
                                                  add_special_tokens=True)
             else:
+                sampled_reviews = []
                 tokenized_title = self.tokenizer(title + " " + seed_keywords, max_length=max_review_len,
                                                  padding='max_length',
                                                  truncation=True,
@@ -76,9 +77,8 @@ class ContentInformation(Dataset):
                 phrase_mask_list.append(tokenized_phrases.attention_mask[i])
 
             for i in range(self.args.n_review - len(sampled_reviews)):
-                zero_vector = [0] * max_review_len
-                phrase_list.append(zero_vector)
-                phrase_mask_list.append(zero_vector)
+                phrase_list.append(tokenized_title.input_ids)
+                phrase_mask_list.append(tokenized_title.attention_mask)
 
             if crs_id in self.data_samples.keys():
                 print()
