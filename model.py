@@ -53,19 +53,36 @@ class ItemRep(nn.Module):
         self.token_emb_dim = token_emb_dim
         self.item_attention = AdditiveAttention(self.token_emb_dim, self.token_emb_dim, self.args.device_id)
         self.word_encoder = bert_model
+        self.prediction_linear = nn.Linear(self.token_emb_dim, 6923).to(self.args.device_id)
+        self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask, item_rep_bert):
         # print("SHAPE:",self.review.shape)
         review = review.view(-1, self.args.max_review_len)  # [B X R, L]
         review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
-        review_emb = item_rep_bert(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
+        review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                      :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-        title_emb = item_rep_bert(input_ids=title,
+        title_emb = self.word_encoder(input_ids=title,
                                       attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
         # query_embedding = title_emb
         # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
-        item_representations = torch.mean(review_emb, dim=1)
+        item_representations = (torch.mean(review_emb, dim=1) + title_emb)
         return item_representations.tolist()
+
+    def pre_forward(self,  movie_id, title, title_mask, review, review_mask, num_review_mask, compute_score=False):
+        review = review.view(-1, self.args.max_review_len)  # [B X R, L]
+        review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
+        review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
+                     :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
+        title_emb = self.word_encoder(input_ids=title,
+                                  attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+
+        review_representation = (torch.mean(review_emb, dim=1) + title_emb)
+        scores = self.prediction_linear(review_representation)  # [B * N, all_entity]
+        loss = self.criterion(scores, movie_id)
+        if compute_score:
+            return scores, movie_id
+        return loss
 
 
 class MovieExpertCRS(nn.Module):

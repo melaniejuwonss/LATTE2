@@ -17,6 +17,7 @@ def parse_args():
     parser.add_argument('--mode', type=str, default='test', choices=['valid','test'])
     parser.add_argument('--dataset_path', type=str, default='data/redial', choices=['data/redial', 'data/inspired'])
     parser.add_argument('--prediction', type=int, default=0)
+    parser.add_argument('--source', type=int, default=0) #0: review, 1:phrase
 
     # rec
     parser.add_argument('--n_review', type=int, default=4)
@@ -71,7 +72,7 @@ def parse_args():
                                  'prajjwal1/bert-mini', 'prajjwal1/bert-tiny', 'roberta-base', 'facebook/bart-base',
                                  'microsoft/DialoGPT-small',
                                  'bert-large-uncased', 't5-base'])  # [NEW] add roberta
-    parser.add_argument('--n_layer', type=int, default=2)
+    parser.add_argument('--n_layer', type=int, default=-1)
     parser.add_argument('--t_layer', type=int, default=-1)
 
     # TransformerEncoder Args

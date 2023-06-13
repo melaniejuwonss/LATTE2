@@ -129,9 +129,12 @@ def main(args):
         bert_config.num_hidden_layers = args.t_layer
     if 'gpt' in args.bert_name.lower():
         bert_model = AutoModel.from_pretrained(args.gpt_name)
+        dialog_bert_model = AutoModel.from_pretrained(args.gpt_name)
     else:
         bert_model = AutoModel.from_pretrained(args.bert_name)
+        dialog_bert_model = AutoModel.from_pretrained(args.bert_name)
     bert_model.resize_token_embeddings(len(tokenizer))
+    dialog_bert_model.resize_token_embeddings(len(tokenizer))
 
     # BERT model freeze layers
     modules = []
@@ -166,7 +169,7 @@ def main(args):
     content_dataset = ContentInformation(args, DATASET_PATH, tokenizer, args.device_id)
 
     # Load expert model
-    model = MovieExpertCRS(args, bert_model, bert_config, kg_information.entity_kg, kg_information.n_entity,
+    model = MovieExpertCRS(args, dialog_bert_model, bert_config, kg_information.entity_kg, kg_information.n_entity,
                            DATASET_PATH, tokenizer, content_dataset).to(args.device_id)
     item_rep_model = ItemRep(args, args.kg_emb_dim, bert_config.hidden_size, bert_model)
 
@@ -180,12 +183,11 @@ def main(args):
         test_data = crs_dataset.test_data
 
         item_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=False)
+        pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
-        # # For pre-training
-        # if not args.pretrained:
-        #     pretrain(args, model, pretrain_dataloader, pretrained_path)
-        # else:
-        #     model.load_state_dict(torch.load(best_rec_pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
+        # For pre-training
+        pretrain(args, item_rep_model, pretrain_dataloader, pretrained_path)
+
 
         type = 'bert'
         if args.dataset_path == 'data/inspired':
