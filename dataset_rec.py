@@ -38,7 +38,7 @@ class ContentInformation(Dataset):
 
             crs_id = str(sample[1]['crs_id'])
             phrases = sample[1]['phrases'][:self.args.n_review]
-            reviews = sample[0]['review']
+            reviews = sample[0]['review'][:self.args.n_review]
             genre = " ".join(sample[0]['meta']['genre'])
             director = " ".join(sample[0]['meta']['director'])
             writers = " ".join(sample[0]['meta']['writers'])
@@ -53,9 +53,8 @@ class ContentInformation(Dataset):
             #     phrases = ['']
 
             if len(reviews) != 0:
-                review_sample_idx = [random.randint(0, len(reviews) - 1) for _ in range(self.args.n_review)]
 
-                sampled_reviews = [title + " " + seed_keywords + " " + reviews[k] for k in review_sample_idx]
+                sampled_reviews = [title + " " + seed_keywords + " " + review for review in reviews]
                 tokenized_phrases = self.tokenizer(sampled_reviews, max_length=max_review_len,
                                                    padding='max_length',
                                                    truncation=True,
