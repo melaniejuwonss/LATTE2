@@ -284,5 +284,5 @@ class MovieExpertCRS(nn.Module):
         if self.args.prediction == 0:
             scores = F.linear(user_embedding, item_rep)  # [B * N, all_entity]
         else:
-            scores = F.linear(user_embedding, self.freezed_item_rep)
+            scores = F.linear(user_embedding, self.freezed_item_rep.transpose(1,0))
         return scores
