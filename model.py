@@ -64,7 +64,7 @@ class ItemRep(nn.Module):
                                       attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
         # query_embedding = title_emb
         # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
-        item_representations = (torch.mean(review_emb, dim=1) + title_emb)
+        item_representations = torch.mean(review_emb, dim=1)
         return item_representations.tolist()
 
 
