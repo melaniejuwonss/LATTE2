@@ -58,26 +58,39 @@ class ItemRep(nn.Module):
 
     def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask, item_rep_bert):
         # print("SHAPE:",self.review.shape)
-        review = review.view(-1, self.args.max_review_len)  # [B X R, L]
-        review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
-        review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
-                     :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-        title_emb = self.word_encoder(input_ids=title,
-                                      attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
-        # query_embedding = title_emb
-        # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
-        item_representations = (torch.mean(review_emb, dim=1) + title_emb)
+        if self.args.n_review != 0:
+            review = review.view(-1, self.args.max_review_len)  # [B X R, L]
+            review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
+            review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
+                         :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
+            title_emb = self.word_encoder(input_ids=title,
+                                          attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+            # query_embedding = title_emb
+            # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
+            item_representations = (torch.mean(review_emb, dim=1) + title_emb)
+        elif self.args.n_review == 0:
+            title_emb = self.word_encoder(input_ids=title,
+                                          attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+            item_representations = title_emb
+
         return item_representations.tolist()
 
     def pre_forward(self,  movie_id, title, title_mask, review, review_mask, num_review_mask, compute_score=False):
-        review = review.view(-1, self.args.max_review_len)  # [B X R, L]
-        review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
-        review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
-                     :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-        title_emb = self.word_encoder(input_ids=title,
-                                  attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+        if self.args.n_review != 0:
+            review = review.view(-1, self.args.max_review_len)  # [B X R, L]
+            review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
+            review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
+                         :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
+            title_emb = self.word_encoder(input_ids=title,
+                                      attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
 
-        review_representation = (torch.mean(review_emb, dim=1) + title_emb)
+            review_representation = (torch.mean(review_emb, dim=1) + title_emb)
+        elif self.args.n_review == 0:
+            title_emb = self.word_encoder(input_ids=title,
+                                          attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+
+            review_representation =  title_emb
+
         scores = self.prediction_linear(review_representation)  # [B * N, all_entity]
         loss = self.criterion(scores, movie_id)
         if compute_score:

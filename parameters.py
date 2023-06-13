@@ -20,7 +20,7 @@ def parse_args():
     parser.add_argument('--source', type=int, default=0) #0: review, 1:phrase
 
     # rec
-    parser.add_argument('--n_review', type=int, default=4)
+    parser.add_argument('--n_review', type=int, default=0)
     parser.add_argument('--n_meta', type=int, default=5)
     # parser.add_argument('--meta', type=str, default='word',
     #                     choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
