@@ -50,15 +50,15 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
 
 
 def finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path, initial_hit,
-                        best_hit, eval_metric, device_id, item_rep):
+                        best_hit, eval_metric, device_id, prediction, item_rep_bert):
     hit_ft = [[], [], [], [], []]
-    # item_rep, movie_ids = [], []
+    item_rep, movie_ids = [], []
     # Fine-tuning Test
-    # if prediction == 0:
-    #     for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
-    #                                                                               bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-    #         item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews, item_rep_bert))
-    #         movie_ids.extend(movie_id.tolist())
+    if prediction == 0:
+        for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
+                                                                                  bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews, item_rep_bert))
+            movie_ids.extend(movie_id.tolist())
 
     for batch in test_dataloader.get_rec_data(shuffle=False):
         context_entities, context_tokens, target_items = batch
@@ -104,26 +104,27 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
     initial_hit = [[], [], []]
     content_hit = [[], [], []]
     eval_metric = [-1]
-    item_rep, movie_ids = [], []
+    # item_rep, movie_ids = [], []
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
 
-    if args.prediction == 0:
-        for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
-                                                                                  bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            item_rep.extend(
-                item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews))
-            # movie_ids.extend(movie_id.tolist())
-        # logger.info(movie_ids)
-        # logger.info(item_rep[0])
+    # movie_ids.extend(movie_id.tolist())
+    # logger.info(movie_ids)
+    # logger.info(item_rep[0])
 
     for epoch in range(args.epoch_ft):
+        item_rep_bert = deepcopy(model.word_encoder)
+        logger.info("Fine-tuning")
+        logger.info(model.word_encoder.encoder.layer[0].attention.self.value.weight[0][0:5].data)
+        logger.info("Item encoder")
+        logger.info(item_rep_bert.encoder.layer[0].attention.self.value.weight[0][0:5].data)
 
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
         finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
-                            initial_hit, best_hit, eval_metric, args.device_id, torch.tensor(item_rep).to(args.device_id))
+                            initial_hit, best_hit, eval_metric, args.device_id, args.prediction, item_rep_bert)
 
+        item_rep, movie_ids = [], []
         # TRAIN
         model.train()
         item_rep_model.train()
@@ -132,6 +133,11 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
         logger.info(f'[Recommendation epoch {str(epoch)}]')
         logger.info('[Train]')
 
+        item_rep = []
+        if args.prediction == 0:
+            for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
+                                                                                      bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+                item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews, item_rep_bert))
 
         for batch in train_dataloader.get_rec_data(args.batch_size):
             context_entities, context_tokens, target_items = batch
@@ -152,7 +158,7 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
     item_rep_bert = deepcopy(model.word_encoder)
     # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
     finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch + 1, results_file_path,
-                        initial_hit, best_hit, eval_metric, args.device_id, torch.tensor(item_rep).to(args.device_id))
+                        initial_hit, best_hit, eval_metric, args.device_id, args.prediction, item_rep_bert)
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 

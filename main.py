@@ -219,80 +219,80 @@ def main(args):
 
         return content_hit, initial_hit, best_result
 
-    if 'conv' in args.task:
-        # Create Result files
-        conv_results_file_path, pre_conv_result_file_path = createResultFile(args)
-        # Load fine-tuned recommender model
-        if os.path.isfile(best_rec_path):
-            logger.info(f'Load pretrained file\t{best_rec_path}')
-            model.load_state_dict(torch.load(best_rec_path, map_location='cuda:%d' % args.device_id))
-        for param in model.parameters():
-            param.requires_grad = False
-
-        # Synthetic dataset
-        content_conv_dataset = ContentInformationConv(args, DATASET_PATH, tokenizer_gpt, tokenizer)
-        content_conv_train_collator = ContentConvCollator('train', args, tokenizer_gpt, tokenizer)
-        content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt, tokenizer)
-        pretrain_conv_dataloader_train = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size,
-                                                    shuffle=True, collate_fn=content_conv_train_collator)
-        pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_pre_eval_batch_size,
-                                                   shuffle=False, collate_fn=content_conv_test_collator)
-        if not args.conv_pretrained:
-            # Pre-train
-            pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader_train,
-                          pretrain_dataloader_test=pretrain_conv_dataloader_test,
-                          path=pre_conv_result_file_path, save_path=pretrained_path)
-        else:
-            # Load saved model for pre-training
-            gpt_model.load_state_dict(torch.load(best_conv_pretrained_path,
-                                                 map_location='cuda:%d' % args.device_id))
-            logger.info(f'Load pretrained conv file\t{best_conv_pretrained_path}')
-
-        # Dialog history
-        conv_train_dataset = CRSConvDataset(
-            DATASET_PATH, 'train', tokenizer_gpt, tokenizer, content_conv_dataset,
-        )
-        conv_valid_dataset = CRSConvDataset(
-            DATASET_PATH, 'valid', tokenizer_gpt, tokenizer, content_conv_dataset,
-        )
-        conv_test_dataset = CRSConvDataset(
-            DATASET_PATH, 'test', tokenizer_gpt, tokenizer, content_conv_dataset,
-        )
-        # dataloader
-        data_collator_teacher = CRSConvDataCollator(
-            args, tokenizer=tokenizer_gpt, tokenizer_bert=tokenizer, device=args.device_id, gen=False,
-            context_max_length=args.context_max_length + args.max_gen_len,
-            entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
-        )
-        train_dataloader = DataLoader(
-            conv_train_dataset,
-            batch_size=args.conv_batch_size,
-            shuffle=True,
-            collate_fn=data_collator_teacher,
-        )
-
-        data_collator_generator = CRSConvDataCollator(
-            args, tokenizer=tokenizer_gpt, tokenizer_bert=tokenizer, device=args.device_id, gen=True,
-            context_max_length=args.context_max_length, resp_max_length=args.max_gen_len,
-            entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
-        )
-        valid_gen_dataloader = DataLoader(
-            conv_valid_dataset,
-            batch_size=args.conv_batch_size,
-            collate_fn=data_collator_generator,
-        )
-        test_gen_dataloader = DataLoader(
-            conv_test_dataset,
-            batch_size=args.gen_batch_size,
-            collate_fn=data_collator_generator,
-        )
-        # train & test
-        if args.mode == 'test':
-            train_conversation(args, model, train_dataloader, test_gen_dataloader, pretrain_conv_dataloader_test,
-                               gpt_model, gpt_config, tokenizer_gpt, tokenizer, conv_results_file_path)
-        elif args.mode == 'valid':
-            train_conversation(args, model, train_dataloader, valid_gen_dataloader, pretrain_conv_dataloader_test,
-                               gpt_model, gpt_config, tokenizer_gpt, tokenizer, conv_results_file_path)
+    # if 'conv' in args.task:
+    #     # Create Result files
+    #     conv_results_file_path, pre_conv_result_file_path = createResultFile(args)
+    #     # Load fine-tuned recommender model
+    #     if os.path.isfile(best_rec_path):
+    #         logger.info(f'Load pretrained file\t{best_rec_path}')
+    #         model.load_state_dict(torch.load(best_rec_path, map_location='cuda:%d' % args.device_id))
+    #     for param in model.parameters():
+    #         param.requires_grad = False
+    #
+    #     # Synthetic dataset
+    #     content_conv_dataset = ContentInformationConv(args, DATASET_PATH, tokenizer_gpt, tokenizer)
+    #     content_conv_train_collator = ContentConvCollator('train', args, tokenizer_gpt, tokenizer)
+    #     content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt, tokenizer)
+    #     pretrain_conv_dataloader_train = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size,
+    #                                                 shuffle=True, collate_fn=content_conv_train_collator)
+    #     pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_pre_eval_batch_size,
+    #                                                shuffle=False, collate_fn=content_conv_test_collator)
+    #     if not args.conv_pretrained:
+    #         # Pre-train
+    #         pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader_train,
+    #                       pretrain_dataloader_test=pretrain_conv_dataloader_test,
+    #                       path=pre_conv_result_file_path, save_path=pretrained_path)
+    #     else:
+    #         # Load saved model for pre-training
+    #         gpt_model.load_state_dict(torch.load(best_conv_pretrained_path,
+    #                                              map_location='cuda:%d' % args.device_id))
+    #         logger.info(f'Load pretrained conv file\t{best_conv_pretrained_path}')
+    #
+    #     # Dialog history
+    #     conv_train_dataset = CRSConvDataset(
+    #         DATASET_PATH, 'train', tokenizer_gpt, tokenizer, content_conv_dataset,
+    #     )
+    #     conv_valid_dataset = CRSConvDataset(
+    #         DATASET_PATH, 'valid', tokenizer_gpt, tokenizer, content_conv_dataset,
+    #     )
+    #     conv_test_dataset = CRSConvDataset(
+    #         DATASET_PATH, 'test', tokenizer_gpt, tokenizer, content_conv_dataset,
+    #     )
+    #     # dataloader
+    #     data_collator_teacher = CRSConvDataCollator(
+    #         args, tokenizer=tokenizer_gpt, tokenizer_bert=tokenizer, device=args.device_id, gen=False,
+    #         context_max_length=args.context_max_length + args.max_gen_len,
+    #         entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
+    #     )
+    #     train_dataloader = DataLoader(
+    #         conv_train_dataset,
+    #         batch_size=args.conv_batch_size,
+    #         shuffle=True,
+    #         collate_fn=data_collator_teacher,
+    #     )
+    #
+    #     data_collator_generator = CRSConvDataCollator(
+    #         args, tokenizer=tokenizer_gpt, tokenizer_bert=tokenizer, device=args.device_id, gen=True,
+    #         context_max_length=args.context_max_length, resp_max_length=args.max_gen_len,
+    #         entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
+    #     )
+    #     valid_gen_dataloader = DataLoader(
+    #         conv_valid_dataset,
+    #         batch_size=args.conv_batch_size,
+    #         collate_fn=data_collator_generator,
+    #     )
+    #     test_gen_dataloader = DataLoader(
+    #         conv_test_dataset,
+    #         batch_size=args.gen_batch_size,
+    #         collate_fn=data_collator_generator,
+    #     )
+    #     # train & test
+    #     if args.mode == 'test':
+    #         train_conversation(args, model, train_dataloader, test_gen_dataloader, pretrain_conv_dataloader_test,
+    #                            gpt_model, gpt_config, tokenizer_gpt, tokenizer, conv_results_file_path)
+    #     elif args.mode == 'valid':
+    #         train_conversation(args, model, train_dataloader, valid_gen_dataloader, pretrain_conv_dataloader_test,
+    #                            gpt_model, gpt_config, tokenizer_gpt, tokenizer, conv_results_file_path)
 
 
 if __name__ == '__main__':
