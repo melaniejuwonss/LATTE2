@@ -56,7 +56,7 @@ class ItemRep(nn.Module):
         self.prediction_linear = nn.Linear(self.token_emb_dim, 6923).to(self.args.device_id)
         self.criterion = nn.CrossEntropyLoss()
 
-    def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask, item_rep_bert):
+    def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask):
         # print("SHAPE:",self.review.shape)
         if self.args.n_review != 0:
             review = review.view(-1, self.args.max_review_len)  # [B X R, L]
