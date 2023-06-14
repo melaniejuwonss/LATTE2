@@ -171,9 +171,6 @@ def main(args):
     # Load expert model
 
     item_rep_model = ItemRep(args, args.kg_emb_dim, bert_config.hidden_size, bert_model).to(args.device_id)
-    model = MovieExpertCRS(args, dialog_bert_model, bert_config, kg_information.entity_kg,
-                           kg_information.n_entity,
-                           DATASET_PATH, tokenizer, content_dataset).to(args.device_id)
 
     if 'rec' in args.task:
         # create result file
@@ -188,7 +185,11 @@ def main(args):
         pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
         # For pre-training
-        # pretrain(args, item_rep_model, pretrain_dataloader, pretrained_path)
+        pretrain(args, item_rep_model, pretrain_dataloader, pretrained_path)
+        model = MovieExpertCRS(args, item_rep_model.word_encoder, bert_config, kg_information.entity_kg, kg_information.n_entity,
+                           DATASET_PATH, tokenizer, content_dataset).to(args.device_id)
+
+
 
         type = 'bert'
         if args.dataset_path == 'data/inspired':
