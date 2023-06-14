@@ -53,7 +53,7 @@ class ItemRep(nn.Module):
         self.token_emb_dim = token_emb_dim
         self.item_attention = AdditiveAttention(self.token_emb_dim, self.token_emb_dim, self.args.device_id)
         self.word_encoder = bert_model
-        self.prediction_linear = nn.Linear(self.token_emb_dim, 6923).to(self.args.device_id)
+        self.prediction_linear = nn.Linear(self.token_emb_dim, 6923)
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask):
