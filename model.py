@@ -56,14 +56,14 @@ class ItemRep(nn.Module):
         self.prediction_linear = nn.Linear(self.token_emb_dim, 6923)
         self.criterion = nn.CrossEntropyLoss()
 
-    def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask, item_encode_bert):
+    def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask):
         # print("SHAPE:",self.review.shape)
         if self.args.n_review != 0:
             review = review.view(-1, self.args.max_review_len)  # [B X R, L]
             review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
-            review_emb = item_encode_bert(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
+            review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                          :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-            title_emb = item_encode_bert(input_ids=title,
+            title_emb = self.word_encoder(input_ids=title,
                                           attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
             # query_embedding = title_emb
             # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
