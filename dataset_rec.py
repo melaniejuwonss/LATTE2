@@ -93,7 +93,7 @@ class ContentInformation(Dataset):
                     "num_reviews": phrase_num
                 }
             elif self.args.source == 1:
-                if len(reviews) != 0:
+                if len(phrases) != 0:
                     sampled_reviews = [phrase for phrase in phrases]
                     tokenized_phrases = self.tokenizer(sampled_reviews, max_length=max_review_len,
                                                        padding='max_length',
@@ -171,7 +171,6 @@ class CRSDatasetRec:
         super(CRSDatasetRec, self).__init__()
         self.args = args
         self.data_path = data_path
-        # self.content_dataset = content_dataset
         self.tokenizer = tokenizer
         self.sep_token = tokenizer.sep_token
         self.movie2name = kg_information.movie2name

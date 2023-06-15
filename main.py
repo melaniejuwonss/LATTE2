@@ -197,7 +197,7 @@ def main(args):
 
         train_rec_dataloader = CRSDataLoader(train_data, args.n_sample, args.batch_size,
                                              word_truncate=args.max_dialog_len, cls_token=tokenizer.cls_token_id,
-                                             task='rec', type=type)
+                                             task='rec', type=type, negative_num=args.negative_num, review_data=content_dataset.data_samples)
         valid_rec_dataloader = CRSDataLoader(valid_data, args.n_sample, args.batch_size,
                                              word_truncate=args.max_dialog_len,
                                              cls_token=tokenizer.cls_token_id, task='rec', type=type)

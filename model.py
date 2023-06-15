@@ -17,6 +17,7 @@ import os
 from tqdm import tqdm
 from loguru import logger
 
+
 @dataclass
 class MultiOutput(ModelOutput):
     conv_loss: Optional[torch.FloatTensor] = None
@@ -56,40 +57,40 @@ class ItemRep(nn.Module):
         self.prediction_linear = nn.Linear(self.token_emb_dim, 6923)
         self.criterion = nn.CrossEntropyLoss()
 
-    def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask):
+    def forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask, item_bert):
         # print("SHAPE:",self.review.shape)
         if self.args.n_review != 0:
             review = review.view(-1, self.args.max_review_len)  # [B X R, L]
             review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
-            review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
+            review_emb = item_bert(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                          :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-            title_emb = self.word_encoder(input_ids=title,
-                                          attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+            title_emb = item_bert(input_ids=title,
+                                  attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
             # query_embedding = title_emb
             # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
             item_representations = (torch.mean(review_emb, dim=1) + title_emb)
         elif self.args.n_review == 0:
-            title_emb = self.word_encoder(input_ids=title,
-                                          attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+            title_emb = item_bert(input_ids=title,
+                                  attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
             item_representations = title_emb
 
         return item_representations.tolist()
 
-    def pre_forward(self,  movie_id, title, title_mask, review, review_mask, num_review_mask, compute_score=False):
+    def pre_forward(self, movie_id, title, title_mask, review, review_mask, num_review_mask, compute_score=False):
         if self.args.n_review != 0:
             review = review.view(-1, self.args.max_review_len)  # [B X R, L]
             review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
             review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                          :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
             title_emb = self.word_encoder(input_ids=title,
-                                      attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+                                          attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
 
             review_representation = (torch.mean(review_emb, dim=1) + title_emb)
         elif self.args.n_review == 0:
             title_emb = self.word_encoder(input_ids=title,
                                           attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
 
-            review_representation =  title_emb
+            review_representation = title_emb
 
         scores = self.prediction_linear(review_representation)  # [B * N, all_entity]
         loss = self.criterion(scores, movie_id)
@@ -148,7 +149,6 @@ class MovieExpertCRS(nn.Module):
             para.requires_grad = False
         self.freezed_item_rep = self.linear_output.weight
         # self.unfreezed_item_rep = nn.Parameter(nn.init.uniform_(torch.FloatTensor(self.token_emb_dim, 6923)), requires_grad=True)
-
 
         # initialize all parameter (except for pretrained BERT)
         self.initialize()
@@ -296,6 +296,44 @@ class MovieExpertCRS(nn.Module):
     #
     #     return entity_representations, entity_padding_mask, kg_embedding, token_embedding_prev, token_padding_mask, user_embedding
 
+    def forward_negativeSampling(self, context_entities, context_tokens, title, review):
+        """
+                candidate_item_reps: [B, K, d]
+                Args: 뽑아준 negative에 대해서만 dot-product
+                    token_seq: [B, L]
+                    mask: [B, L]
+                    candidate_knowledge_token: [B, K+1, L]
+                    candidate_knowledge_mask: [B, K+1, L]
+                Returns:
+                """
+        batch_size = title.size(0)
+        if self.args.n_review != 0:
+            review = review.view(-1, self.args.max_review_len).to(self.args.device_id)  # [B X R, L]
+            review_mask = (review != self.bert_config.pad_token_id) # [B X R, L]
+            title = title.view(-1, self.args.max_review_len).to(self.args.device_id)
+            title_mask = (title != self.bert_config.pad_token_id)
+            review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0, :]
+            title_emb = self.word_encoder(input_ids=title,
+                                          attention_mask=title_mask).last_hidden_state[:, 0, :]  # [B x K, d]
+
+            candidate_item_reps = (torch.mean(review_emb, dim=1) + title_emb)
+
+        elif self.args.n_review == 0:
+            title = title.view(-1, self.args.max_review_len).to(self.args.device_id)
+            title_mask = (title != self.bert_config.pad_token_id)
+            title_emb = self.word_encoder(input_ids=title,
+                                          attention_mask=title_mask).last_hidden_state[:, 0, :]  # [B x K, d]
+
+            candidate_item_reps = title_emb
+        candidate_item_reps = candidate_item_reps.reshape(batch_size, self.args.negative_num + 1, -1)
+
+        token_embedding, token_padding_mask = self.get_representations(context_entities, context_tokens)
+        token_attn_rep = token_embedding[:, 0, :]
+        user_embedding = token_attn_rep
+        dot_score = torch.sum(candidate_item_reps * user_embedding.unsqueeze(1), dim=-1)  # [B, K, d] x [B, 1, d]
+
+        return dot_score
+
     def forward(self, context_entities, context_tokens, item_rep):
         token_embedding, token_padding_mask = self.get_representations(context_entities, context_tokens)
         # token_embedding = self.linear_transformation(token_embedding)
@@ -314,5 +352,5 @@ class MovieExpertCRS(nn.Module):
         if self.args.prediction == 0:
             scores = F.linear(user_embedding, item_rep)  # [B * N, all_entity]
         else:
-            scores = F.linear(user_embedding, self.freezed_item_rep.transpose(1,0))
+            scores = F.linear(user_embedding, self.freezed_item_rep.transpose(1, 0))
         return scores

@@ -17,7 +17,9 @@ def parse_args():
     parser.add_argument('--mode', type=str, default='test', choices=['valid','test'])
     parser.add_argument('--dataset_path', type=str, default='data/redial', choices=['data/redial', 'data/inspired'])
     parser.add_argument('--prediction', type=int, default=0)
-    parser.add_argument('--source', type=int, default=0) #0: review, 1:phrase
+    parser.add_argument('--source', type=int, default=1) #0: review, 1:phrase
+    parser.add_argument('--negative_num', type=int, default=4)
+    parser.add_argument('--forward_type', type=int, default=1)  # 0: forward, 1:foward_negativeSampling
 
     # rec
     parser.add_argument('--n_review', type=int, default=0)
