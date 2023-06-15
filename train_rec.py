@@ -64,7 +64,7 @@ def finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader,
 
     for batch in test_dataloader.get_rec_data(shuffle=False):
         context_entities, context_tokens, target_items, candidate_items, _, _ = batch
-        scores = model.forward(context_entities, context_tokens, item_rep)
+        scores = model.forward(context_entities, context_tokens, torch.tensor(item_rep).to(device_id))
         # scores = scores[:, torch.LongTensor(model.movie2ids)]
 
         target_items = target_items.cpu().numpy()
