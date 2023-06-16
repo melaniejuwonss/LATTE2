@@ -12,9 +12,9 @@ def pretrain(args, model, pretrain_dataloader, path):
     for epoch in range(args.epoch_pt):
         model.train()
         total_loss = 0
-        for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(pretrain_dataloader,
-                                                                                  bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            loss = model.pre_forward(movie_id, title, title_mask, review, review_mask, num_reviews)
+        for movie_id, review_meta, review_token, review_mask in tqdm(pretrain_dataloader,
+                                                                     bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            loss = model.pre_forward(review_meta, review_token, review_mask, movie_id)
             total_loss += loss.data.float()
             optimizer.zero_grad()
             loss.backward()
@@ -27,10 +27,9 @@ def pretrain(args, model, pretrain_dataloader, path):
     topk = [1, 5, 10, 20]
     hit = [[], [], [], []]
 
-    for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(
+    for movie_id, review_meta, review_token, review_mask in tqdm(
             pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        scores, target_id = model.pre_forward(movie_id, title, title_mask, review, review_mask, num_reviews,
-                                              compute_score=True)
+        scores, target_id = model.pre_forward(review_meta, review_token, review_mask, movie_id, compute_score=True)
         target_id = target_id.cpu().numpy()
 
         for k in range(len(topk)):

@@ -144,9 +144,7 @@ class MovieExpertCRS(nn.Module):
 
         # Loss
         self.criterion = nn.CrossEntropyLoss()
-        self.linear_output = nn.Linear(self.token_emb_dim, 6923, bias=False)
-        for name, para in self.linear_output.named_parameters():
-            para.requires_grad = False
+        self.linear_output = nn.Linear(self.token_emb_dim, 6923)
         self.freezed_item_rep = self.linear_output.weight
         # self.unfreezed_item_rep = nn.Parameter(nn.init.uniform_(torch.FloatTensor(self.token_emb_dim, 6923)), requires_grad=True)
 
@@ -181,30 +179,32 @@ class MovieExpertCRS(nn.Module):
         # [B, 1] -> [N, B] -> [N X B]
         target_item = target_item.unsqueeze(1).repeat(1, n_review).view(-1).to(self.device_id)
 
-        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)
+        # kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)
 
         meta = meta.view(-1, n_meta)  # [B * N, L']
-        entity_representations = kg_embedding[meta]  # [B * N, L', d]
-        entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (B * N, L')
-        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
-        entity_attn_rep = self.dropout_pt(entity_attn_rep)
+        # entity_representations = kg_embedding[meta]  # [B * N, L', d]
+        # entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (B * N, L')
+        # entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
+        # entity_attn_rep = self.dropout_pt(entity_attn_rep)
 
         text = text.view(-1, max_review_len)  # [B * N, L]
         mask = mask.view(-1, max_review_len)  # [B * N, L]
 
         text_emb = self.word_encoder(input_ids=text,
                                      attention_mask=mask).last_hidden_state  # [B * N, L] -> [B * N, L, d]
-        proj_text_emb = self.linear_transformation(text_emb)  # [B * N, L, d]
-        content_emb = proj_text_emb[:, 0, :]  # [B * N, d]
-        content_emb = self.dropout_pt(content_emb)
+        # proj_text_emb = self.linear_transformation(text_emb)  # [B * N, L, d]
+        # content_emb = proj_text_emb[:, 0, :]  # [B * N, d]
+        # content_emb = self.dropout_pt(content_emb)
 
-        gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))  # [B * N, d * 2]
-        user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep  # [B * N, d]
+        content_emb = text_emb[:, 0, :]
+        # gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))  # [B * N, d * 2]
+        # user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep  # [B * N, d]
 
-        if self.args.prediction == 0:
-            scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
-        else:
-            scores = self.linear_output(user_embedding)
+        user_embedding = content_emb
+        # if self.args.prediction == 0:
+        #     scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
+        # else:
+        scores = self.linear_output(user_embedding)
 
         loss = self.criterion(scores, target_item)
         if compute_score:
@@ -336,7 +336,7 @@ class MovieExpertCRS(nn.Module):
 
         return dot_score
 
-    def forward(self, context_entities, context_tokens, item_rep):
+    def forward(self, context_entities, context_tokens):
         token_embedding, token_padding_mask = self.get_representations(context_entities, context_tokens)
         # token_embedding = self.linear_transformation(token_embedding)
         token_attn_rep = token_embedding[:, 0, :]
@@ -351,8 +351,8 @@ class MovieExpertCRS(nn.Module):
         user_embedding = token_attn_rep
         # item_rep = self.item_representations()
         # scores = self.linear_output(user_embedding)
-        if self.args.prediction == 0:
-            scores = F.linear(user_embedding, item_rep)  # [B * N, all_entity]
-        else:
-            scores = F.linear(user_embedding, self.freezed_item_rep.transpose(1, 0))
+        # if self.args.prediction == 0:
+        #     scores = F.linear(user_embedding, item_rep)  # [B * N, all_entity]
+        # else:
+        scores = self.linear_output(user_embedding)
         return scores

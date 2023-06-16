@@ -188,7 +188,10 @@ def main(args):
         pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
         # For pre-training
-        # pretrain(args, item_rep_model, pretrain_dataloader, pretrained_path)
+        if not args.pretrained:
+            pretrain(args, model, pretrain_dataloader, pretrained_path)
+        else:
+            model.load_state_dict(torch.load(best_rec_pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
         type = 'bert'
         if args.dataset_path == 'data/inspired':
@@ -197,23 +200,28 @@ def main(args):
 
         train_rec_dataloader = CRSDataLoader(train_data, args.n_sample, args.batch_size,
                                              word_truncate=args.max_dialog_len, cls_token=tokenizer.cls_token_id,
-                                             task='rec', type=type, negative_num=args.negative_num, review_data=content_dataset.data_samples)
+                                             task='rec', type=type, negative_num=args.negative_num,
+                                             review_data=content_dataset.data_samples)
         valid_rec_dataloader = CRSDataLoader(valid_data, args.n_sample, args.batch_size,
                                              word_truncate=args.max_dialog_len,
-                                             cls_token=tokenizer.cls_token_id, task='rec', type=type, review_data=content_dataset.data_samples)
+                                             cls_token=tokenizer.cls_token_id, task='rec', type=type,
+                                             review_data=content_dataset.data_samples)
         test_rec_dataloader = CRSDataLoader(test_data, args.n_sample, args.batch_size,
                                             word_truncate=args.max_dialog_len,
-                                            cls_token=tokenizer.cls_token_id, task='rec', type=type, review_data=content_dataset.data_samples)
+                                            cls_token=tokenizer.cls_token_id, task='rec', type=type,
+                                            review_data=content_dataset.data_samples)
 
         if args.mode == 'test':
             content_hit, initial_hit, best_result = train_recommender(args, model, item_rep_model, train_rec_dataloader,
                                                                       test_rec_dataloader, item_dataloader,
-                                                                      trained_path, results_file_path
+                                                                      trained_path, results_file_path,
+                                                                      pretrain_dataloader
                                                                       )
         elif args.mode == 'valid':
             content_hit, initial_hit, best_result = train_recommender(args, model, item_rep_model, train_rec_dataloader,
                                                                       valid_rec_dataloader, item_dataloader,
-                                                                      trained_path, results_file_path
+                                                                      trained_path, results_file_path,
+                                                                      pretrain_dataloader
                                                                       )
 
         return content_hit, initial_hit, best_result
