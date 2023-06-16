@@ -146,7 +146,7 @@ class CRSDataLoader:
 
             review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.n_sample)]
 
-            batch_review_meta.append([conv_dict['review_meta'][k] for k in review_sample_idx])
+            # batch_review_meta.append([conv_dict['review_meta'][k] for k in review_sample_idx])
             batch_review.append([conv_dict['review'][k] for k in review_sample_idx])
             batch_review_mask.append([conv_dict['review_mask'][k] for k in review_sample_idx])
 
