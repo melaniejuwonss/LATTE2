@@ -138,7 +138,7 @@ class CRSDataLoader:
             # batch_review.append(review)
             # batch_candidate_items.append(candidate_items)
             ### Sampling
-            review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=1))
+            review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=2))
 
             if review_exist_num == 0:
                 review_exist_num = 1
