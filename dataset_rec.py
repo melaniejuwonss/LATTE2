@@ -176,8 +176,8 @@ class ContentInformation(Dataset):
             reviews = sample['reviews']
             reviews_meta = sample['reviews_meta']
 
-            # if self.movie2name[crs_id][0] == -1:
-            #     continue
+            if self.movie2name[crs_id][0] == -1:
+                continue
 
             if len(reviews) == 0:
                 reviews = ['']
@@ -202,7 +202,7 @@ class ContentInformation(Dataset):
                 review_list.append(zero_vector)
                 review_mask_list.append(zero_vector)
 
-            self.data_samples[label] = {
+            self.data_samples[self.movie2name[crs_id][0]] = {
                 "review": review_list,
                 "review_mask": review_mask_list,
                 "review_meta": reviews_meta_list
