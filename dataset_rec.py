@@ -239,11 +239,12 @@ class ContentInformation(Dataset):
 
 
 class CRSDatasetRec:
-    def __init__(self, args, data_path, tokenizer, kg_information):
+    def __init__(self, args, data_path, tokenizer, kg_information, content_dataset):
         super(CRSDatasetRec, self).__init__()
         self.args = args
         self.data_path = data_path
         self.tokenizer = tokenizer
+        self.content_dataset = content_dataset
         self.sep_token = tokenizer.sep_token
         self.movie2name = kg_information.movie2name
         self.entity2id = kg_information.entity2id
