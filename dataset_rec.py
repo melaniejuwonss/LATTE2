@@ -325,7 +325,7 @@ class CRSDatasetRec:
 
     def _augment_and_add(self, raw_conv_dict):
         augmented_conv_dicts = []
-        context_tokens, context_entities, context_items = [], [], []
+        context_tokens, context_entities, context_items, review_meta = [], [], [], []
         entity_set, word_set = set(), set()
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
@@ -333,9 +333,10 @@ class CRSDatasetRec:
             text_token_ids = self.tokenizer(text_tokens, add_special_tokens=False).input_ids
             plot_meta, plot, plot_mask, review, review_mask = [], [], [], [], []
             if len(context_tokens) > 0:
-                # for movie in movies:
-                #     review.append(self.content_dataset.data_samples[movie]['review'])
-                #     review_mask.append(self.content_dataset.data_samples[movie]['review_mask'])
+                for movie in movies:
+                    review_meta.append(self.content_dataset.data_samples[movie]['review_meta'])
+                    review.append(self.content_dataset.data_samples[movie]['review'])
+                    review_mask.append(self.content_dataset.data_samples[movie]['review_mask'])
 
                 conv_dict = {
                     "role": conv['role'],
@@ -343,7 +344,10 @@ class CRSDatasetRec:
                     "response": text_token_ids,  # text_tokens,
                     "context_entities": copy(context_entities),
                     "context_items": copy(context_items),
-                    "items": movies
+                    "items": movies,
+                    "review_meta": review_meta,
+                    "review": review,
+                    "review_mask": review_mask
 
                 }
                 augmented_conv_dicts.append(conv_dict)
