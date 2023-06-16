@@ -309,13 +309,15 @@ class MovieExpertCRS(nn.Module):
         batch_size = title.size(0)
         if self.args.n_review != 0:
             review = review.view(-1, self.args.max_review_len).to(self.args.device_id)  # [B X R, L]
-            review_mask = (review != self.bert_config.pad_token_id) # [B X R, L]
+            review_mask = (review != self.bert_config.pad_token_id)  # [B X R, L]
             title = title.view(-1, self.args.max_review_len).to(self.args.device_id)
             title_mask = (title != self.bert_config.pad_token_id)
-            review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0, :]
+            review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
+                         :]  # [ B x K x R, d]
             title_emb = self.word_encoder(input_ids=title,
                                           attention_mask=title_mask).last_hidden_state[:, 0, :]  # [B x K, d]
 
+            review_emb = review_emb.reshape(batch_size * self.args.negative_num, self.args.n_review, -1)
             candidate_item_reps = (torch.mean(review_emb, dim=1) + title_emb)
 
         elif self.args.n_review == 0:
