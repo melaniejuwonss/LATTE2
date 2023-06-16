@@ -179,33 +179,33 @@ class MovieExpertCRS(nn.Module):
         # [B, 1] -> [N, B] -> [N X B]
         target_item = target_item.unsqueeze(1).repeat(1, n_review).view(-1).to(self.device_id)
 
-        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)
+        # kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)
 
         meta = meta.view(-1, n_meta)  # [B * N, L']
-        entity_representations = kg_embedding[meta]  # [B * N, L', d]
-        entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (B * N, L')
-        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
-        entity_attn_rep = self.dropout_pt(entity_attn_rep)
+        # entity_representations = kg_embedding[meta]  # [B * N, L', d]
+        # entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (B * N, L')
+        # entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
+        # entity_attn_rep = self.dropout_pt(entity_attn_rep)
 
         text = text.view(-1, max_review_len)  # [B * N, L]
         mask = mask.view(-1, max_review_len)  # [B * N, L]
 
         text_emb = self.word_encoder(input_ids=text,
                                      attention_mask=mask).last_hidden_state  # [B * N, L] -> [B * N, L, d]
-        proj_text_emb = self.linear_transformation(text_emb)  # [B * N, L, d]
-        content_emb = proj_text_emb[:, 0, :]  # [B * N, d]
-        content_emb = self.dropout_pt(content_emb)
+        # proj_text_emb = self.linear_transformation(text_emb)  # [B * N, L, d]
+        # content_emb = proj_text_emb[:, 0, :]  # [B * N, d]
+        # content_emb = self.dropout_pt(content_emb)
 
-        # content_emb = text_emb[:, 0, :]
-        gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))  # [B * N, d * 2]
-        user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep  # [B * N, d]
+        content_emb = text_emb[:, 0, :]
+        # gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))  # [B * N, d * 2]
+        # user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep  # [B * N, d]
 
-        # user_embedding = content_emb
+        user_embedding = content_emb
         # if self.args.prediction == 0:
         #     scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
         # else:
-        scores = F.linear(user_embedding, kg_embedding)
-        # scores = self.linear_output(user_embedding)
+        # scores = F.linear(user_embedding, kg_embedding)
+        scores = self.linear_output(user_embedding)
 
         loss = self.criterion(scores, target_item)
         if compute_score:
