@@ -317,7 +317,7 @@ class MovieExpertCRS(nn.Module):
             title_emb = self.word_encoder(input_ids=title,
                                           attention_mask=title_mask).last_hidden_state[:, 0, :]  # [B x K, d]
 
-            review_emb = review_emb.reshape(batch_size * self.args.negative_num, self.args.n_review, -1)
+            review_emb = review_emb.reshape(batch_size * (self.args.negative_num + 1), self.args.n_review, -1)
             candidate_item_reps = (torch.mean(review_emb, dim=1) + title_emb)
 
         elif self.args.n_review == 0:
