@@ -166,22 +166,22 @@ class MovieExpertCRS(nn.Module):
     def pre_forward(self, review_meta, review_token, review_mask, target_item, compute_score=False):
         n_review = review_token.shape[1]  # number of sampled reviews [N]
         max_review_len = review_token.shape[2]  # length of review text [L]
-        n_meta = review_meta.shape[2]  # length of review meta [L']
+        # n_meta = review_meta.shape[2]  # length of review meta [L']
 
         text = review_token  # [B, N, L]
         mask = review_mask  # [B, N, L]
-        meta = review_meta  # [B, N, L']
+        # meta = review_meta  # [B, N, L']
 
         text = text.to(self.device_id)
         mask = mask.to(self.device_id)
-        meta = meta.to(self.device_id)
+        # meta = meta.to(self.device_id)
 
         # [B, 1] -> [N, B] -> [N X B]
         target_item = target_item.unsqueeze(1).repeat(1, n_review).view(-1).to(self.device_id)
 
         # kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)
 
-        meta = meta.view(-1, n_meta)  # [B * N, L']
+        # meta = meta.view(-1, n_meta)  # [B * N, L']
         # entity_representations = kg_embedding[meta]  # [B * N, L', d]
         # entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (B * N, L')
         # entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
