@@ -92,8 +92,9 @@ class CRSDataLoader:
                 for idx, movie in enumerate(conv_dict['items']):
                     augment_conv_dict = deepcopy(conv_dict)
                     augment_conv_dict['item'] = movie
-                    # augment_conv_dict['review'] = conv_dict['review'][idx]
-                    # augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
+                    augment_conv_dict['review'] = conv_dict['review'][idx]
+                    augment_conv_dict['review_meta'] = conv_dict['review_meta'][idx]
+                    augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
                     augment_dataset.append(augment_conv_dict)
 
         logger.info('[Finish dataset process before rec batchify]')
@@ -138,7 +139,7 @@ class CRSDataLoader:
             # batch_review.append(review)
             # batch_candidate_items.append(candidate_items)
             ### Sampling
-            review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=2))
+            review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=1))
 
             if review_exist_num == 0:
                 review_exist_num = 1
