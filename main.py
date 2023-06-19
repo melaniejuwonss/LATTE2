@@ -171,7 +171,7 @@ def main(args):
     # Load expert model
 
     item_rep_model = ItemRep(args, args.kg_emb_dim, bert_config.hidden_size, bert_model).to(args.device_id)
-    model = MovieExpertCRS(args, bert_model, bert_config, kg_information.entity_kg,
+    model = MovieExpertCRS(args, dialog_bert_model, bert_config, kg_information.entity_kg,
                            kg_information.n_entity,
                            DATASET_PATH, tokenizer, content_dataset).to(args.device_id)
 
@@ -179,7 +179,7 @@ def main(args):
         # create result file
         results_file_path = createResultFile(args)
         # content_dataset = ContentInformation(args, DATASET_PATH, tokenizer, args.device_id)
-        crs_dataset = CRSDatasetRec(args, DATASET_PATH, tokenizer, kg_information, content_dataset)
+        crs_dataset = CRSDatasetRec(args, DATASET_PATH, tokenizer, kg_information)
         train_data = crs_dataset.train_data
         valid_data = crs_dataset.valid_data
         test_data = crs_dataset.test_data
@@ -188,10 +188,7 @@ def main(args):
         pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
         # For pre-training
-        if not args.pretrained:
-            pretrain(args, model, pretrain_dataloader, pretrained_path)
-        else:
-            model.load_state_dict(torch.load(best_rec_pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
+        # pretrain(args, item_rep_model, pretrain_dataloader, pretrained_path)
 
         type = 'bert'
         if args.dataset_path == 'data/inspired':
@@ -200,28 +197,23 @@ def main(args):
 
         train_rec_dataloader = CRSDataLoader(train_data, args.n_sample, args.batch_size,
                                              word_truncate=args.max_dialog_len, cls_token=tokenizer.cls_token_id,
-                                             task='rec', type=type, negative_num=args.negative_num,
-                                             review_data=content_dataset.data_samples)
+                                             task='rec', type=type)
         valid_rec_dataloader = CRSDataLoader(valid_data, args.n_sample, args.batch_size,
                                              word_truncate=args.max_dialog_len,
-                                             cls_token=tokenizer.cls_token_id, task='rec', type=type,
-                                             review_data=content_dataset.data_samples)
+                                             cls_token=tokenizer.cls_token_id, task='rec', type=type)
         test_rec_dataloader = CRSDataLoader(test_data, args.n_sample, args.batch_size,
                                             word_truncate=args.max_dialog_len,
-                                            cls_token=tokenizer.cls_token_id, task='rec', type=type,
-                                            review_data=content_dataset.data_samples)
+                                            cls_token=tokenizer.cls_token_id, task='rec', type=type)
 
         if args.mode == 'test':
             content_hit, initial_hit, best_result = train_recommender(args, model, item_rep_model, train_rec_dataloader,
                                                                       test_rec_dataloader, item_dataloader,
-                                                                      trained_path, results_file_path,
-                                                                      pretrain_dataloader
+                                                                      trained_path, results_file_path
                                                                       )
         elif args.mode == 'valid':
             content_hit, initial_hit, best_result = train_recommender(args, model, item_rep_model, train_rec_dataloader,
                                                                       valid_rec_dataloader, item_dataloader,
-                                                                      trained_path, results_file_path,
-                                                                      pretrain_dataloader
+                                                                      trained_path, results_file_path
                                                                       )
 
         return content_hit, initial_hit, best_result

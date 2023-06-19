@@ -30,221 +30,149 @@ class ContentInformation(Dataset):
         self.read_data(args.max_review_len)  # read review text and meta
         self.key_list = list(self.data_samples.keys())  # movie id list
 
-    # def read_data(self, max_review_len):
-    #     data = json.load(open(os.path.join(self.data_path, 'content_data.json'), encoding='utf-8'))[0]
-    #     review_phrase = json.load(open(os.path.join(self.data_path, 'reviewPhrase.json'), encoding='utf-8'))
-    #
-    #     for sample in tqdm(zip(data, review_phrase), bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-    #         phrase_list, phrase_mask_list = [], []
-    #
-    #         crs_id = str(sample[1]['crs_id'])
-    #         label = self.crsid2id[crs_id]
-    #         phrases = sample[1]['phrases'][:self.args.n_review]
-    #         reviews = sample[0]['review'][:self.args.n_review]
-    #         genre = " ".join(sample[0]['meta']['genre'])
-    #         director = " ".join(sample[0]['meta']['director'])
-    #         writers = " ".join(sample[0]['meta']['writers'])
-    #         stars = " ".join(sample[0]['meta']['stars'])
-    #
-    #         # if self.movie2name[crs_id][0] == -1:
-    #         #     continue
-    #
-    #         title = self.movie2name[crs_id][1]
-    #         seed_keywords = genre + " " + director + " " + writers + " " + stars
-    #         phrase_num = min(len(phrases), self.args.n_review)
-    #         #     phrases = ['']
-    #         if self.args.source == 0:
-    #             if len(reviews) != 0:
-    #                 sampled_reviews = [review for review in reviews]
-    #                 tokenized_phrases = self.tokenizer(sampled_reviews, max_length=max_review_len,
-    #                                                    padding='max_length',
-    #                                                    truncation=True,
-    #                                                    add_special_tokens=True)
-    #                 tokenized_title = self.tokenizer(title + " " + seed_keywords,
-    #                                                  max_length=max_review_len,
-    #                                                  padding='max_length',
-    #                                                  truncation=True,
-    #                                                  add_special_tokens=True)
-    #             else:
-    #                 sampled_reviews = []
-    #                 tokenized_title = self.tokenizer(title + " " + seed_keywords, max_length=max_review_len,
-    #                                                  padding='max_length',
-    #                                                  truncation=True,
-    #                                                  add_special_tokens=True)
-    #
-    #             for i in range(min(len(sampled_reviews), self.args.n_review)):
-    #                 phrase_list.append(tokenized_phrases.input_ids[i])
-    #                 phrase_mask_list.append(tokenized_phrases.attention_mask[i])
-    #
-    #             for i in range(self.args.n_review - len(sampled_reviews)):
-    #                 zero_vector = [0] * max_review_len
-    #                 phrase_list.append(zero_vector)
-    #                 phrase_mask_list.append(zero_vector)
-    #                 # phrase_list.append(tokenized_title.input_ids)
-    #                 # phrase_mask_list.append(tokenized_title.attention_mask)
-    #
-    #             if crs_id in self.data_samples.keys():
-    #                 print()
-    #             self.data_samples[label] = {
-    #                 "title": tokenized_title.input_ids,
-    #                 "title_mask": tokenized_title.attention_mask,
-    #                 "review": phrase_list,
-    #                 "review_mask": phrase_mask_list,
-    #                 "num_reviews": phrase_num
-    #             }
-    #         elif self.args.source == 1:
-    #             if len(phrases) != 0:
-    #                 sampled_reviews = [phrase for phrase in phrases]
-    #                 tokenized_phrases = self.tokenizer(sampled_reviews, max_length=max_review_len,
-    #                                                    padding='max_length',
-    #                                                    truncation=True,
-    #                                                    add_special_tokens=True)
-    #                 tokenized_title = self.tokenizer(title + " " + seed_keywords,
-    #                                                  max_length=max_review_len,
-    #                                                  padding='max_length',
-    #                                                  truncation=True,
-    #                                                  add_special_tokens=True)
-    #             else:
-    #                 sampled_reviews = []
-    #                 tokenized_title = self.tokenizer(title + " " + seed_keywords, max_length=max_review_len,
-    #                                                  padding='max_length',
-    #                                                  truncation=True,
-    #                                                  add_special_tokens=True)
-    #
-    #             for i in range(min(len(sampled_reviews), self.args.n_review)):
-    #                 phrase_list.append(tokenized_phrases.input_ids[i])
-    #                 phrase_mask_list.append(tokenized_phrases.attention_mask[i])
-    #
-    #             for i in range(self.args.n_review - len(sampled_reviews)):
-    #                 zero_vector = [0] * max_review_len
-    #                 phrase_list.append(zero_vector)
-    #                 phrase_mask_list.append(zero_vector)
-    #                 # phrase_list.append(tokenized_title.input_ids)
-    #                 # phrase_mask_list.append(tokenized_title.attention_mask)
-    #
-    #             if crs_id in self.data_samples.keys():
-    #                 print()
-    #             self.data_samples[label] = {
-    #                 "title": tokenized_title.input_ids,
-    #                 "title_mask": tokenized_title.attention_mask,
-    #                 "review": phrase_list,
-    #                 "review_mask": phrase_mask_list,
-    #                 "num_reviews": phrase_num
-    #             }
-    #
-    #     logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
-
-    # def __getitem__(self, item):
-    #     idx = self.key_list[item]  # entity id
-    #     title = self.data_samples[idx]['title']
-    #     title_mask = self.data_samples[idx]['title_mask']
-    #     review_token = self.data_samples[idx]['review']
-    #     review_mask = self.data_samples[idx]['review_mask']
-    #     num_reviews = self.data_samples[idx]['num_reviews']
-    #
-    #     # review_exist_num = np.count_nonzero(np.sum(np.array(review_mask), axis=1))
-    #     #
-    #     # # randomly sample review
-    #     # if review_exist_num == 0:
-    #     #     review_exist_num = 1
-    #     # review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.args.n_sample)]
-    #
-    #     # review_token = [review_token[k] for k in review_sample_idx]
-    #     # review_mask = [review_mask[k] for k in review_sample_idx]
-    #
-    #     idx = torch.tensor(int(idx)).to(self.args.device_id)
-    #     title = torch.LongTensor(title).to(self.args.device_id)  # [L, ]
-    #     title_mask = torch.LongTensor(title_mask).to(self.args.device_id)  # [L, ]
-    #     review_token = torch.LongTensor(review_token).to(self.args.device_id)  # [R, L]
-    #     review_mask = torch.LongTensor(review_mask).to(self.args.device_id)  # [R, L]
-    #     num_review_mask = torch.tensor([1] * num_reviews + [0] * (self.args.n_review - num_reviews)).to(
-    #         self.args.device_id)
-    #
-    #     return idx, title, title_mask, review_token, review_mask, num_review_mask
-
-    # def __len__(self):
-    #     return len(self.data_samples)
     def read_data(self, max_review_len):
-        f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
-        data = json.load(f)
+        data = json.load(open(os.path.join(self.data_path, 'content_data.json'), encoding='utf-8'))[0]
+        review_phrase = json.load(open(os.path.join(self.data_path, 'reviewPhrase.json'), encoding='utf-8'))
 
-        for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            review_list, review_mask_list, reviews_meta_list = [], [], []
+        for sample in tqdm(zip(data, review_phrase), bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            phrase_list, phrase_mask_list = [], []
 
-            crs_id = str(sample['crs_id'])
+            crs_id = str(sample[1]['crs_id'])
             label = self.crsid2id[crs_id]
-            reviews = sample['reviews']
-            reviews_meta = sample['reviews_meta']
+            phrases = sample[1]['phrases'][:self.args.n_review]
+            reviews = sample[0]['review'][:self.args.n_review]
+            genre = " ".join(sample[0]['meta']['genre'])
+            director = " ".join(sample[0]['meta']['director'])
+            writers = " ".join(sample[0]['meta']['writers'])
+            stars = " ".join(sample[0]['meta']['stars'])
 
             # if self.movie2name[crs_id][0] == -1:
             #     continue
 
-            if len(reviews) == 0:
-                reviews = ['']
-                reviews_meta = [[]]
+            title = self.movie2name[crs_id][1]
+            seed_keywords = genre + " " + director + " " + writers + " " + stars
+            phrase_num = min(len(phrases), self.args.n_review)
+            #     phrases = ['']
+            if self.args.source == 0:
+                if len(reviews) != 0:
+                    sampled_reviews = [review for review in reviews]
+                    tokenized_phrases = self.tokenizer(sampled_reviews, max_length=max_review_len,
+                                                       padding='max_length',
+                                                       truncation=True,
+                                                       add_special_tokens=True)
+                    tokenized_title = self.tokenizer(title + " " + seed_keywords,
+                                                     max_length=max_review_len,
+                                                     padding='max_length',
+                                                     truncation=True,
+                                                     add_special_tokens=True)
+                else:
+                    sampled_reviews = []
+                    tokenized_title = self.tokenizer(title + " " + seed_keywords, max_length=max_review_len,
+                                                     padding='max_length',
+                                                     truncation=True,
+                                                     add_special_tokens=True)
 
-            tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len,
-                                               padding='max_length',
-                                               truncation=True,
-                                               add_special_tokens=True)
+                for i in range(min(len(sampled_reviews), self.args.n_review)):
+                    phrase_list.append(tokenized_phrases.input_ids[i])
+                    phrase_mask_list.append(tokenized_phrases.attention_mask[i])
 
-            for idx, meta in enumerate(reviews_meta):
-                reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
-                reviews_meta[idx] = reviews_meta[idx] + [0] * (self.args.n_meta - len(meta))
+                for i in range(self.args.n_review - len(sampled_reviews)):
+                    zero_vector = [0] * max_review_len
+                    phrase_list.append(zero_vector)
+                    phrase_mask_list.append(zero_vector)
+                    # phrase_list.append(tokenized_title.input_ids)
+                    # phrase_mask_list.append(tokenized_title.attention_mask)
 
-            for i in range(min(len(reviews), self.args.n_review)):
-                review_list.append(tokenized_reviews.input_ids[i])
-                review_mask_list.append(tokenized_reviews.attention_mask[i])
-                reviews_meta_list.append(reviews_meta[i])
+                if crs_id in self.data_samples.keys():
+                    print()
+                self.data_samples[label] = {
+                    "title": tokenized_title.input_ids,
+                    "title_mask": tokenized_title.attention_mask,
+                    "review": phrase_list,
+                    "review_mask": phrase_mask_list,
+                    "num_reviews": phrase_num
+                }
+            elif self.args.source == 1:
+                if len(reviews) != 0:
+                    sampled_reviews = [phrase for phrase in phrases]
+                    tokenized_phrases = self.tokenizer(sampled_reviews, max_length=max_review_len,
+                                                       padding='max_length',
+                                                       truncation=True,
+                                                       add_special_tokens=True)
+                    tokenized_title = self.tokenizer(title + " " + seed_keywords,
+                                                     max_length=max_review_len,
+                                                     padding='max_length',
+                                                     truncation=True,
+                                                     add_special_tokens=True)
+                else:
+                    sampled_reviews = []
+                    tokenized_title = self.tokenizer(title + " " + seed_keywords, max_length=max_review_len,
+                                                     padding='max_length',
+                                                     truncation=True,
+                                                     add_special_tokens=True)
 
-            for i in range(self.args.n_review - len(reviews)):
-                zero_vector = [0] * max_review_len
-                review_list.append(zero_vector)
-                review_mask_list.append(zero_vector)
+                for i in range(min(len(sampled_reviews), self.args.n_review)):
+                    phrase_list.append(tokenized_phrases.input_ids[i])
+                    phrase_mask_list.append(tokenized_phrases.attention_mask[i])
 
-            self.data_samples[label] = {
-                "review": review_list,
-                "review_mask": review_mask_list,
-                "review_meta": reviews_meta_list
-            }
+                for i in range(self.args.n_review - len(sampled_reviews)):
+                    zero_vector = [0] * max_review_len
+                    phrase_list.append(zero_vector)
+                    phrase_mask_list.append(zero_vector)
+                    # phrase_list.append(tokenized_title.input_ids)
+                    # phrase_mask_list.append(tokenized_title.attention_mask)
+
+                if crs_id in self.data_samples.keys():
+                    print()
+                self.data_samples[label] = {
+                    "title": tokenized_title.input_ids,
+                    "title_mask": tokenized_title.attention_mask,
+                    "review": phrase_list,
+                    "review_mask": phrase_mask_list,
+                    "num_reviews": phrase_num
+                }
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
     def __getitem__(self, item):
         idx = self.key_list[item]  # entity id
+        title = self.data_samples[idx]['title']
+        title_mask = self.data_samples[idx]['title_mask']
         review_token = self.data_samples[idx]['review']
         review_mask = self.data_samples[idx]['review_mask']
-        review_meta = self.data_samples[idx]['review_meta']
+        num_reviews = self.data_samples[idx]['num_reviews']
 
-        review_exist_num = np.count_nonzero(np.sum(np.array(review_mask), axis=1))
+        # review_exist_num = np.count_nonzero(np.sum(np.array(review_mask), axis=1))
+        #
+        # # randomly sample review
+        # if review_exist_num == 0:
+        #     review_exist_num = 1
+        # review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.args.n_sample)]
 
-        # randomly sample review
-        if review_exist_num == 0:
-            review_exist_num = 1
-        review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.args.n_sample)]
+        # review_token = [review_token[k] for k in review_sample_idx]
+        # review_mask = [review_mask[k] for k in review_sample_idx]
 
-        review_token = [review_token[k] for k in review_sample_idx]
-        review_mask = [review_mask[k] for k in review_sample_idx]
-        review_meta = [review_meta[k] for k in review_sample_idx]
+        idx = torch.tensor(int(idx)).to(self.args.device_id)
+        title = torch.LongTensor(title).to(self.args.device_id)  # [L, ]
+        title_mask = torch.LongTensor(title_mask).to(self.args.device_id)  # [L, ]
+        review_token = torch.LongTensor(review_token).to(self.args.device_id)  # [R, L]
+        review_mask = torch.LongTensor(review_mask).to(self.args.device_id)  # [R, L]
+        num_review_mask = torch.tensor([1] * num_reviews + [0] * (self.args.n_review - num_reviews)).to(
+            self.args.device_id)
 
-        idx = torch.tensor(idx)
-        review_token = torch.LongTensor(review_token)
-        review_mask = torch.LongTensor(review_mask)
-        review_meta = torch.LongTensor(review_meta)
-
-        return idx, review_meta, review_token, review_mask
+        return idx, title, title_mask, review_token, review_mask, num_review_mask
 
     def __len__(self):
         return len(self.data_samples)
 
 
 class CRSDatasetRec:
-    def __init__(self, args, data_path, tokenizer, kg_information, content_dataset):
+    def __init__(self, args, data_path, tokenizer, kg_information):
         super(CRSDatasetRec, self).__init__()
         self.args = args
         self.data_path = data_path
+        # self.content_dataset = content_dataset
         self.tokenizer = tokenizer
-        self.content_dataset = content_dataset
         self.sep_token = tokenizer.sep_token
         self.movie2name = kg_information.movie2name
         self.entity2id = kg_information.entity2id
@@ -326,7 +254,7 @@ class CRSDatasetRec:
 
     def _augment_and_add(self, raw_conv_dict):
         augmented_conv_dicts = []
-        context_tokens, context_entities, context_items, review_meta = [], [], [], []
+        context_tokens, context_entities, context_items = [], [], []
         entity_set, word_set = set(), set()
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
@@ -334,10 +262,9 @@ class CRSDatasetRec:
             text_token_ids = self.tokenizer(text_tokens, add_special_tokens=False).input_ids
             plot_meta, plot, plot_mask, review, review_mask = [], [], [], [], []
             if len(context_tokens) > 0:
-                for movie in movies:
-                    review_meta.append(self.content_dataset.data_samples[movie]['review_meta'])
-                    review.append(self.content_dataset.data_samples[movie]['review'])
-                    review_mask.append(self.content_dataset.data_samples[movie]['review_mask'])
+                # for movie in movies:
+                #     review.append(self.content_dataset.data_samples[movie]['review'])
+                #     review_mask.append(self.content_dataset.data_samples[movie]['review_mask'])
 
                 conv_dict = {
                     "role": conv['role'],
@@ -345,10 +272,7 @@ class CRSDatasetRec:
                     "response": text_token_ids,  # text_tokens,
                     "context_entities": copy(context_entities),
                     "context_items": copy(context_items),
-                    "items": movies,
-                    "review_meta": review_meta,
-                    "review": review,
-                    "review_mask": review_mask
+                    "items": movies
 
                 }
                 augmented_conv_dicts.append(conv_dict)

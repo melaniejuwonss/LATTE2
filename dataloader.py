@@ -12,7 +12,7 @@ import numpy as np
 
 class CRSDataLoader:
     def __init__(self, dataset, n_sample, batch_size, entity_truncate=None, word_truncate=None, padding_idx=0,
-                 mode='Test', cls_token=101, type='bert', task='rec', negative_num=4, review_data=None):
+                 mode='Test', cls_token=101, type='bert', task='rec'):
         self.cls_token = cls_token
         self.entity_truncate = entity_truncate
         self.word_truncate = word_truncate
@@ -20,8 +20,6 @@ class CRSDataLoader:
         self.n_sample = n_sample
         self.batch_size = batch_size
         self.type = type
-        self.negative_num = negative_num
-        self.review_data = review_data
         if task == 'rec':
             self.dataset = self.rec_process_fn(dataset, mode)
         elif task == 'conv':
@@ -92,9 +90,8 @@ class CRSDataLoader:
                 for idx, movie in enumerate(conv_dict['items']):
                     augment_conv_dict = deepcopy(conv_dict)
                     augment_conv_dict['item'] = movie
-                    augment_conv_dict['review'] = conv_dict['review'][idx]
-                    augment_conv_dict['review_meta'] = conv_dict['review_meta'][idx]
-                    augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
+                    # augment_conv_dict['review'] = conv_dict['review'][idx]
+                    # augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
                     augment_dataset.append(augment_conv_dict)
 
         logger.info('[Finish dataset process before rec batchify]')
@@ -102,20 +99,11 @@ class CRSDataLoader:
 
         return augment_dataset
 
-    def negative_sampler(self, target_item, num_items=6923):
-        negative_indice = []
-        while len(negative_indice) < self.negative_num:
-            negative_idx = random.randint(0, num_items - 1)
-            # negative_idx = random.choice(candidate_knowledges)
-            if (negative_idx not in negative_indice) and (negative_idx != target_item):
-                negative_indice.append(negative_idx)
-        return negative_indice
-
     def rec_batchify(self, batch):
         batch_context_entities = []
         batch_context_tokens = []
-        batch_title, batch_review, batch_review_meta, batch_review_mask = [], [], [], []
-        batch_item, batch_candidate_items = [], []
+        batch_review, batch_review_meta, batch_review_mask = [], [], []
+        batch_item = []
 
         for conv_dict in batch:
             batch_context_entities.append(
@@ -130,35 +118,20 @@ class CRSDataLoader:
 
             batch_context_tokens.append(context_tokens)
             batch_item.append(conv_dict['item'])
-            # candidate_items = [conv_dict['item']] + self.negative_sampler(conv_dict['item'])
-            # title, review = [], []
-            # for item in candidate_items:
-            #     title.append(self.review_data[item]['title'])
-            #     review.append(self.review_data[item]['review'])
-            # batch_title.append(title)
-            # batch_review.append(review)
-            # batch_candidate_items.append(candidate_items)
             ### Sampling
-            review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=1))
+            # review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=1))
+            #
+            # if review_exist_num == 0:
+            #     review_exist_num = 1
+            #
+            # review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.n_sample)]
 
-            if review_exist_num == 0:
-                review_exist_num = 1
-
-            review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.n_sample)]
-
-            # batch_review_meta.append([conv_dict['review_meta'][k] for k in review_sample_idx])
-            batch_review.append([conv_dict['review'][k] for k in review_sample_idx])
-            batch_review_mask.append([conv_dict['review_mask'][k] for k in review_sample_idx])
+            # batch_review.append([conv_dict['review'][k] for k in review_sample_idx])
+            # batch_review_mask.append([conv_dict['review_mask'][k] for k in review_sample_idx])
 
         return (padded_tensor(batch_context_entities, 0, pad_tail=False),
                 padded_tensor(batch_context_tokens, 0, pad_tail=False),
-                torch.tensor(batch_review_meta, dtype=torch.long),
-                torch.tensor(batch_review, dtype=torch.long),
-                torch.tensor(batch_review_mask, dtype=torch.long),
                 torch.tensor(batch_item, dtype=torch.long)
-                # torch.tensor(batch_candidate_items),
-                # torch.tensor(batch_title),
-                # torch.tensor(batch_review)
                 )
 
     def conv_process_fn(self, dataset):
