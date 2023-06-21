@@ -197,13 +197,13 @@ def main(args):
 
         train_rec_dataloader = CRSDataLoader(train_data, args.n_sample, args.batch_size,
                                              word_truncate=args.max_dialog_len, cls_token=tokenizer.cls_token_id,
-                                             task='rec', type=type)
+                                             task='rec', type=type, negative_num=args.negative_num, review_data=content_dataset.data_samples)
         valid_rec_dataloader = CRSDataLoader(valid_data, args.n_sample, args.batch_size,
                                              word_truncate=args.max_dialog_len,
-                                             cls_token=tokenizer.cls_token_id, task='rec', type=type)
+                                             cls_token=tokenizer.cls_token_id, task='rec', type=type, review_data=content_dataset.data_samples)
         test_rec_dataloader = CRSDataLoader(test_data, args.n_sample, args.batch_size,
                                             word_truncate=args.max_dialog_len,
-                                            cls_token=tokenizer.cls_token_id, task='rec', type=type)
+                                            cls_token=tokenizer.cls_token_id, task='rec', type=type, review_data=content_dataset.data_samples)
 
         if args.mode == 'test':
             content_hit, initial_hit, best_result = train_recommender(args, model, item_rep_model, train_rec_dataloader,

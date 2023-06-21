@@ -1,5 +1,6 @@
 from copy import deepcopy
 from math import ceil
+import random
 
 import torch
 import numpy as np
@@ -50,19 +51,21 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
 
 
 def finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path, initial_hit,
-                        best_hit, eval_metric, device_id, item_rep):
+                        best_hit, eval_metric, prediction, device_id, item_rep):
     hit_ft = [[], [], [], [], []]
-    # item_rep, movie_ids = [], []
+    item_rep, movie_ids = [], []
     # Fine-tuning Test
-    # if prediction == 0:
-    #     for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
-    #                                                                               bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-    #         item_rep.extend(item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews, item_rep_bert))
-    #         movie_ids.extend(movie_id.tolist())
+    item_rep_bert = deepcopy(model.word_encoder)
+    if prediction == 0:
+        for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
+                                                                                  bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            item_rep.extend(
+                item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews, item_rep_bert))
+            movie_ids.extend(movie_id.tolist())
 
     for batch in test_dataloader.get_rec_data(shuffle=False):
-        context_entities, context_tokens, target_items = batch
-        scores = model.forward(context_entities, context_tokens, item_rep)
+        context_entities, context_tokens, target_items, candidate_items, _, _ = batch
+        scores = model.forward(context_entities, context_tokens, torch.tensor(item_rep).to(device_id))
         # scores = scores[:, torch.LongTensor(model.movie2ids)]
 
         target_items = target_items.cpu().numpy()
@@ -98,6 +101,20 @@ def finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader,
             best_hit[k] = np.mean(hit_ft[k])
 
 
+def negative_sampler(args, target_items, num_items=6923):
+    negative_indices = []
+    target_items = target_items.tolist()
+    for target_item in target_items:
+        negative_indice = []
+        while len(negative_indice) < args.negative_num:
+            negative_idx = random.randint(0, num_items - 1)
+            # negative_idx = random.choice(candidate_knowledges)
+            if (negative_idx not in negative_indice) and (negative_idx != target_item):
+                negative_indice.append(negative_idx)
+        negative_indices.append(negative_indice)
+    return torch.tensor(negative_indices)
+
+
 def train_recommender(args, model, item_rep_model, train_dataloader, test_dataloader, item_dataloader, path,
                       results_file_path):
     best_hit = [[], [], [], [], []]
@@ -109,20 +126,18 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
 
-    if args.prediction == 0:
-        for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
-                                                                                  bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            item_rep.extend(
-                item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews))
-            # movie_ids.extend(movie_id.tolist())
-        # logger.info(movie_ids)
-        # logger.info(item_rep[0])
-
+    # if args.prediction == 0:
+    #     for movie_id, title, title_mask, review, review_mask, num_reviews in tqdm(item_dataloader,
+    #                                                                               bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+    #         item_rep.extend(
+    #             item_rep_model.forward(movie_id, title, title_mask, review, review_mask, num_reviews))
+    #
+    # item_rep = torch.tensor(item_rep).to(args.device_id)
     for epoch in range(args.epoch_ft):
 
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
-                            initial_hit, best_hit, eval_metric, args.device_id, torch.tensor(item_rep).to(args.device_id))
+        # finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
+        #                     initial_hit, best_hit, eval_metric, args.prediction, args.device_id, item_rep)
 
         # TRAIN
         model.train()
@@ -132,19 +147,35 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
         logger.info(f'[Recommendation epoch {str(epoch)}]')
         logger.info('[Train]')
 
-
         for batch in train_dataloader.get_rec_data(args.batch_size):
-            context_entities, context_tokens, target_items = batch
-            scores_ft = model.forward(context_entities, context_tokens, torch.tensor(item_rep).to(args.device_id))
-            loss = model.criterion(scores_ft, target_items.to(args.device_id))
+            context_entities, context_tokens, target_items, candidate_items, title, review = batch
+            for i in range(args.num_iteration):
+                batch_title, batch_review = [], []
+                negative_indices = negative_sampler(args, target_items)
+                candidate_items = torch.cat([target_items.unsqueeze(1), negative_indices], dim=1).tolist() # [B , k + 1]
+                for items in candidate_items:
+                    title, review = [], []
+                    for item in items:
+                        title.append(train_dataloader.review_data[item]['title'])
+                        review.append(train_dataloader.review_data[item]['review'])
+                    batch_title.append(title)
+                    batch_review.append(review)
+                batch_title = torch.tensor(batch_title)
+                batch_review = torch.tensor(batch_review)
+                if args.forward_type == 0:
+                    scores_ft = model.forward(context_entities, context_tokens, item_rep)
+                    loss = model.criterion(scores_ft, target_items.to(args.device_id))
+                elif args.forward_type == 1:
+                    scores_ft = model.forward_negativeSampling(context_entities, context_tokens, batch_title, batch_review)
+                    loss = (-torch.log_softmax(scores_ft, dim=1).select(dim=1, index=0).mean())
+                # loss = model.criterion(scores_ft, target_items.to(args.device_id))
+                # loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
+                # loss = loss_ft + ((loss_pt) * args.loss_lambda)
 
-            # loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
-            # loss = loss_ft + ((loss_pt) * args.loss_lambda)
-
-            total_loss += loss.data.float()
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                total_loss += loss.data.float()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
         scheduler.step()
 
         print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
@@ -152,7 +183,7 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
     item_rep_bert = deepcopy(model.word_encoder)
     # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
     finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch + 1, results_file_path,
-                        initial_hit, best_hit, eval_metric, args.device_id, torch.tensor(item_rep).to(args.device_id))
+                        initial_hit, best_hit, eval_metric, args.prediction, args.device_id, item_rep)
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 

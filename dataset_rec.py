@@ -171,7 +171,6 @@ class CRSDatasetRec:
         super(CRSDatasetRec, self).__init__()
         self.args = args
         self.data_path = data_path
-        # self.content_dataset = content_dataset
         self.tokenizer = tokenizer
         self.sep_token = tokenizer.sep_token
         self.movie2name = kg_information.movie2name

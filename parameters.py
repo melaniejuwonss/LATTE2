@@ -20,6 +20,7 @@ def parse_args():
     parser.add_argument('--source', type=int, default=1) #0: review, 1:phrase
     parser.add_argument('--negative_num', type=int, default=4)
     parser.add_argument('--forward_type', type=int, default=1)  # 0: forward, 1:foward_negativeSampling
+    parser.add_argument('--num_iteration', type=int, default=100)
 
     # rec
     parser.add_argument('--n_review', type=int, default=0)
