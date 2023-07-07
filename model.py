@@ -62,15 +62,15 @@ class ItemRep(nn.Module):
         if self.args.n_review != 0:
             review = review.view(-1, self.args.max_review_len)  # [B X R, L]
             review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
-            review_emb = item_bert(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
+            review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                          :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-            title_emb = item_bert(input_ids=title,
+            title_emb = self.word_encoder(input_ids=title,
                                   attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
             # query_embedding = title_emb
             # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
             item_representations = (torch.mean(review_emb, dim=1) + title_emb)
         elif self.args.n_review == 0:
-            title_emb = item_bert(input_ids=title,
+            title_emb = self.word_encoder(input_ids=title,
                                   attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
             item_representations = title_emb
 
@@ -296,7 +296,7 @@ class MovieExpertCRS(nn.Module):
     #
     #     return entity_representations, entity_padding_mask, kg_embedding, token_embedding_prev, token_padding_mask, user_embedding
 
-    def forward_negativeSampling(self, context_entities, context_tokens, title, review):
+    def forward_negativeSampling(self, context_entities, context_tokens, title, review, item_bert_model):
         """
                 candidate_item_reps: [B, K, d]
                 Args: 뽑아준 negative에 대해서만 dot-product
@@ -312,9 +312,9 @@ class MovieExpertCRS(nn.Module):
             review_mask = (review != self.bert_config.pad_token_id)  # [B X R, L]
             title = title.view(-1, self.args.max_review_len).to(self.args.device_id)
             title_mask = (title != self.bert_config.pad_token_id)
-            review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
+            review_emb = item_bert_model(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                          :]  # [ B x K x R, d]
-            title_emb = self.word_encoder(input_ids=title,
+            title_emb = item_bert_model(input_ids=title,
                                           attention_mask=title_mask).last_hidden_state[:, 0, :]  # [B x K, d]
 
             review_emb = review_emb.reshape(batch_size, self.args.n_review, -1) # [B , R, d]
@@ -323,7 +323,7 @@ class MovieExpertCRS(nn.Module):
         elif self.args.n_review == 0:
             title = title.view(-1, self.args.max_review_len).to(self.args.device_id)
             title_mask = (title != self.bert_config.pad_token_id)
-            title_emb = self.word_encoder(input_ids=title,
+            title_emb = item_bert_model(input_ids=title,
                                           attention_mask=title_mask).last_hidden_state[:, 0, :]  # [B x K, d]
 
             candidate_item_reps = title_emb  # [B , d]

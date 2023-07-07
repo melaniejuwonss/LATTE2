@@ -164,7 +164,7 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
                 scores_ft = model.forward(context_entities, context_tokens, item_rep)
                 loss = model.criterion(scores_ft, target_items.to(args.device_id))
             elif args.forward_type == 1:
-                scores_ft = model.forward_negativeSampling(context_entities, context_tokens, batch_title, batch_review)
+                scores_ft = model.forward_negativeSampling(context_entities, context_tokens, batch_title, batch_review, item_rep_model.word_encoder)
                 prob = -torch.log_softmax(scores_ft, dim=1)
                 loss = torch.diagonal(prob,
                                       0).mean()  # (-torch.log_softmax(scores_ft, dim=1).select(dim=1, index=0).mean())
