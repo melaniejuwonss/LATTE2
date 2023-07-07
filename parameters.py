@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument('--num_iteration', type=int, default=100)
 
     # rec
-    parser.add_argument('--n_review', type=int, default=3)
+    parser.add_argument('--n_review', type=int, default=0)
     parser.add_argument('--n_meta', type=int, default=5)
     # parser.add_argument('--meta', type=str, default='word',
     #                     choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument('--max_review_len', type=int, default=128)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--epoch_pt', type=int, default=30)  # [NEW] # epochs of pre-training
     parser.add_argument('--epoch_ft', type=int, default=10)  # [NEW] # epochs if fine-tuning
-    parser.add_argument('--batch_size', type=int, default=2)
+    parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--lr_pt', type=float, default=1e-4, help='Pre-training Learning rate')
     parser.add_argument('--lr_ft', type=float, default=1e-3, help='Fine-tuning Learning rate')
     parser.add_argument('--loss_lambda', type=float, default=0.1, help='lambda')
