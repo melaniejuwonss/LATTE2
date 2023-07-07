@@ -136,8 +136,8 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
     for epoch in range(args.epoch_ft):
 
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        # finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch, results_file_path,
-        #                     initial_hit, best_hit, eval_metric, args.prediction, args.device_id, item_rep)
+        finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch + 1, results_file_path,
+                            initial_hit, best_hit, eval_metric, args.prediction, args.device_id, item_rep)
 
         # TRAIN
         model.train()
@@ -158,15 +158,16 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
                 batch_review.append(train_dataloader.review_data[item]['review'])
                 # batch_title.append(title)
                 # batch_review.append(review)
-            batch_title = torch.tensor(batch_title) # [B, L]
-            batch_review = torch.tensor(batch_review) # [B, L]
+            batch_title = torch.tensor(batch_title)  # [B, L]
+            batch_review = torch.tensor(batch_review)  # [B, L]
             if args.forward_type == 0:
                 scores_ft = model.forward(context_entities, context_tokens, item_rep)
                 loss = model.criterion(scores_ft, target_items.to(args.device_id))
             elif args.forward_type == 1:
                 scores_ft = model.forward_negativeSampling(context_entities, context_tokens, batch_title, batch_review)
                 prob = -torch.log_softmax(scores_ft, dim=1)
-                loss = torch.diagonal(prob,0).mean() # (-torch.log_softmax(scores_ft, dim=1).select(dim=1, index=0).mean())
+                loss = torch.diagonal(prob,
+                                      0).mean()  # (-torch.log_softmax(scores_ft, dim=1).select(dim=1, index=0).mean())
             # loss = model.criterion(scores_ft, target_items.to(args.device_id))
             # loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
             # loss = loss_ft + ((loss_pt) * args.loss_lambda)
