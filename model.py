@@ -317,8 +317,8 @@ class MovieExpertCRS(nn.Module):
             title_emb = self.word_encoder(input_ids=title,
                                           attention_mask=title_mask).last_hidden_state[:, 0, :]  # [B x K, d]
 
-            review_emb = review_emb.reshape(batch_size * (self.args.negative_num + 1), self.args.n_review, -1)
-            candidate_item_reps = (torch.mean(review_emb, dim=1) + title_emb)
+            review_emb = review_emb.reshape(batch_size, self.args.n_review, -1) # [B , R, d]
+            candidate_item_reps = (torch.mean(review_emb, dim=1) + title_emb) # [B, d]
 
         elif self.args.n_review == 0:
             title = title.view(-1, self.args.max_review_len).to(self.args.device_id)
@@ -326,13 +326,15 @@ class MovieExpertCRS(nn.Module):
             title_emb = self.word_encoder(input_ids=title,
                                           attention_mask=title_mask).last_hidden_state[:, 0, :]  # [B x K, d]
 
-            candidate_item_reps = title_emb
-        candidate_item_reps = candidate_item_reps.reshape(batch_size, self.args.negative_num + 1, -1)
+            candidate_item_reps = title_emb  # [B , d]
+        # candidate_item_reps = candidate_item_reps.reshape(batch_size, self.args.negative_num + 1, -1)
 
         token_embedding, token_padding_mask = self.get_representations(context_entities, context_tokens)
         token_attn_rep = token_embedding[:, 0, :]
         user_embedding = token_attn_rep
-        dot_score = torch.sum(candidate_item_reps * user_embedding.unsqueeze(1), dim=-1)  # [B, K, d] x [B, 1, d]
+        dot_score = torch.matmul(user_embedding, torch.transpose(candidate_item_reps, 1, 0)) #[B, B]
+
+        # dot_score = torch.sum(candidate_item_reps * user_embedding.unsqueeze(1), dim=-1)  # [B, K, d] x [B, 1, d]
 
         return dot_score
 

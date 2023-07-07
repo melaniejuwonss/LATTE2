@@ -149,33 +149,32 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
 
         for batch in train_dataloader.get_rec_data(args.batch_size):
             context_entities, context_tokens, target_items, candidate_items, title, review = batch
-            for i in range(args.num_iteration):
-                batch_title, batch_review = [], []
-                negative_indices = negative_sampler(args, target_items)
-                candidate_items = torch.cat([target_items.unsqueeze(1), negative_indices], dim=1).tolist() # [B , k + 1]
-                for items in candidate_items:
-                    title, review = [], []
-                    for item in items:
-                        title.append(train_dataloader.review_data[item]['title'])
-                        review.append(train_dataloader.review_data[item]['review'])
-                    batch_title.append(title)
-                    batch_review.append(review)
-                batch_title = torch.tensor(batch_title)
-                batch_review = torch.tensor(batch_review)
-                if args.forward_type == 0:
-                    scores_ft = model.forward(context_entities, context_tokens, item_rep)
-                    loss = model.criterion(scores_ft, target_items.to(args.device_id))
-                elif args.forward_type == 1:
-                    scores_ft = model.forward_negativeSampling(context_entities, context_tokens, batch_title, batch_review)
-                    loss = (-torch.log_softmax(scores_ft, dim=1).select(dim=1, index=0).mean())
-                # loss = model.criterion(scores_ft, target_items.to(args.device_id))
-                # loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
-                # loss = loss_ft + ((loss_pt) * args.loss_lambda)
+            batch_title, batch_review = [], []
+            # negative_indices = negative_sampler(args, target_items)
+            # candidate_items = torch.cat([target_items.unsqueeze(1), negative_indices], dim=1).tolist() # [B , k + 1]
+            for item in target_items.tolist():
+                title, review = [], []
+                batch_title.append(train_dataloader.review_data[item]['title'])
+                batch_review.append(train_dataloader.review_data[item]['review'])
+                # batch_title.append(title)
+                # batch_review.append(review)
+            batch_title = torch.tensor(batch_title) # [B, L]
+            batch_review = torch.tensor(batch_review) # [B, L]
+            if args.forward_type == 0:
+                scores_ft = model.forward(context_entities, context_tokens, item_rep)
+                loss = model.criterion(scores_ft, target_items.to(args.device_id))
+            elif args.forward_type == 1:
+                scores_ft = model.forward_negativeSampling(context_entities, context_tokens, batch_title, batch_review)
+                prob = -torch.log_softmax(scores_ft, dim=1)
+                loss = torch.diagonal(prob,0).mean() # (-torch.log_softmax(scores_ft, dim=1).select(dim=1, index=0).mean())
+            # loss = model.criterion(scores_ft, target_items.to(args.device_id))
+            # loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
+            # loss = loss_ft + ((loss_pt) * args.loss_lambda)
 
-                total_loss += loss.data.float()
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+            total_loss += loss.data.float()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
         scheduler.step()
 
         print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))

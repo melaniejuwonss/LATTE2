@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument('--num_iteration', type=int, default=100)
 
     # rec
-    parser.add_argument('--n_review', type=int, default=0)
+    parser.add_argument('--n_review', type=int, default=3)
     parser.add_argument('--n_meta', type=int, default=5)
     # parser.add_argument('--meta', type=str, default='word',
     #                     choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
