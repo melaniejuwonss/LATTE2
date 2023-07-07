@@ -1,6 +1,6 @@
 import random
 from collections import defaultdict
-from copy import copy
+from copy import copy, deepcopy
 
 from torch.utils.data import Dataset
 import torch
@@ -207,6 +207,16 @@ class CRSDatasetRec:
                            conversation in tqdm(raw_data,
                                                 bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')]  # 연속해서 나온 대화들 하나로 합침 (예) S1, S2, R1 --> S1 + S2, R1
         augmented_conv_dicts = []
+        # augment_dataset = []
+        # for conv_dict in tqdm(augmented_convs):
+        #     if conv_dict['role'] == 'Recommender':
+        #         for idx, movie in enumerate(conv_dict['items']):
+        #             augment_conv_dict = deepcopy(conv_dict["text"])
+        #             augment_conv_dict['item'] = movie
+        #             # augment_conv_dict['review'] = conv_dict['review'][idx]
+        #             # augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
+        #             augment_dataset.append(augment_conv_dict)
+
         for conv in tqdm(augmented_convs):
             augmented_conv_dicts.extend(self._augment_and_add(conv))  # conversation length 만큼 training sample 생성
         return augmented_conv_dicts

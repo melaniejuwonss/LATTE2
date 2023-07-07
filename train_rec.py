@@ -136,8 +136,8 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
     for epoch in range(args.epoch_ft):
 
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch + 1, results_file_path,
-                            initial_hit, best_hit, eval_metric, args.prediction, args.device_id, item_rep)
+        # finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch + 1, results_file_path,
+        #                     initial_hit, best_hit, eval_metric, args.prediction, args.device_id, item_rep)
 
         # TRAIN
         model.train()
@@ -152,6 +152,9 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
             batch_title, batch_review = [], []
             # negative_indices = negative_sampler(args, target_items)
             # candidate_items = torch.cat([target_items.unsqueeze(1), negative_indices], dim=1).tolist() # [B , k + 1]
+            item_matrix = target_items.repeat(target_items.size()).view(target_items.size()[0], -1)
+            tmp = torch.eq(item_matrix, target_items.view(target_items.size()[0], -1)).to(args.device_id)
+            isSameItem = tmp.fill_diagonal_(0) * -1e20
             for item in target_items.tolist():
                 title, review = [], []
                 batch_title.append(train_dataloader.review_data[item]['title'])
@@ -165,6 +168,7 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
                 loss = model.criterion(scores_ft, target_items.to(args.device_id))
             elif args.forward_type == 1:
                 scores_ft = model.forward_negativeSampling(context_entities, context_tokens, batch_title, batch_review)
+                scores_ft = scores_ft + isSameItem
                 prob = -torch.log_softmax(scores_ft, dim=1)
                 loss = torch.diagonal(prob,
                                       0).mean()  # (-torch.log_softmax(scores_ft, dim=1).select(dim=1, index=0).mean())
