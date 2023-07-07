@@ -136,8 +136,8 @@ def train_recommender(args, model, item_rep_model, train_dataloader, test_datalo
     for epoch in range(args.epoch_ft):
 
         # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        # finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch + 1, results_file_path,
-        #                     initial_hit, best_hit, eval_metric, args.prediction, args.device_id, item_rep)
+        finetuning_evaluate(model, item_rep_model, test_dataloader, item_dataloader, epoch + 1, results_file_path,
+                            initial_hit, best_hit, eval_metric, args.prediction, args.device_id, item_rep)
 
         # TRAIN
         model.train()
